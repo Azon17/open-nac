@@ -1,0 +1,24 @@
+###############################################################################
+#  Open NAC — FreeRADIUS Huntgroups
+#  Эквивалент: Cisco ISE Network Device Groups → Location
+#
+#  Группируем NAS-устройства по сайтам для:
+#    - Per-site авторизационных политик
+#    - Site-specific VLAN assignment
+#    - Логирования с привязкой к площадке
+###############################################################################
+
+#--- HQ (Центральный офис) ---
+hq		NAS-IP-Address == 10.0.0.0/16
+
+#--- Branch B ---
+branch-b	NAS-IP-Address == 10.1.0.0/16
+
+#--- Branch C ---
+branch-c	NAS-IP-Address == 10.2.0.0/16
+
+#--- Wireless ---
+wireless	NAS-Port-Type == Wireless-802.11
+
+#--- VPN ---
+vpn		NAS-Port-Type == Virtual

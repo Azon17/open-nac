@@ -1,0 +1,11 @@
+# Open NAC Policy Engine
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+sqlalchemy[asyncio]==2.0.35
+aiomysql==0.2.0
+redis[hiredis]==5.1.1
+aiokafka==0.11.0
+pydantic==2.9.2
+httpx==0.27.2
+python-dotenv==1.0.1

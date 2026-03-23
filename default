@@ -1,0 +1,272 @@
+###############################################################################
+#  Open NAC — FreeRADIUS Default Virtual Server
+#  Эквивалент: Cisco ISE PSN (Policy Service Node) — runtime engine
+#
+#  Обрабатывает:
+#    - 802.1X (EAP-TLS, PEAP-MSCHAPv2, EAP-TTLS)
+#    - MAB (MAC Authentication Bypass)
+#    - RADIUS Accounting (Start/Interim/Stop)
+#    - Post-Auth: профилирование, CoA-триггеры, Kafka-события
+#
+#  Поток аутентификации:
+#    authorize {} → authenticate {} → post-auth {}
+#
+#  Поток авторизации (ISE-стиль):
+#    1. Определить тип запроса (dot1x vs MAB)
+#    2. Аутентифицировать (AD/LDAP/SQL/certificate)
+#    3. Получить группы из AD/LDAP
+#    4. Применить политику авторизации (VLAN, ACL, SGT, URL-redirect)
+#    5. Запустить profiling (async через REST → policy-engine)
+#    6. Опубликовать событие в Kafka
+###############################################################################
+
+server default {
+
+	listen {
+		type = auth
+		ipaddr = *
+		port = 0
+	}
+
+	listen {
+		type = acct
+		ipaddr = *
+		port = 0
+	}
+
+	######################################################################
+	#  AUTHORIZE — сбор данных для принятия решения
+	######################################################################
+
+	authorize {
+
+		#--- Фильтрация входящих атрибутов ---
+		filter_username
+		filter_password
+
+		#--- Preprocess: нормализация huntgroups, hints ---
+		preprocess
+		huntgroups
+
+		#--- Определяем тип аутентификации: dot1x vs MAB ---
+		#
+		#  802.1X: Service-Type = Framed-User + EAP-Message present
+		#  MAB:    Service-Type = Call-Check, User-Name = MAC address
+		#
+		#  Это критически важное разветвление — аналог ISE Policy Set
+		#  matching по Authentication Method
+
+		if (&EAP-Message) {
+			#--- 802.1X: запускаем EAP ---
+			update control {
+				&Auth-Type := EAP
+			}
+		}
+		elsif (&Service-Type == "Call-Check" || &User-Name =~ /^([0-9a-fA-F]{2}[-:.]?){5}[0-9a-fA-F]{2}$/) {
+			#--- MAB: нормализуем MAC-адрес ---
+			update request {
+				&Calling-Station-Id := "%{tolower:%{regex.0}}"
+			}
+
+			#--- Проверяем MAC в SQL (nac_endpoints) ---
+			nac_mab_check
+
+			#--- Если MAC не найден — гостевой VLAN + URL-redirect ---
+			if (!ok) {
+				update control {
+					&Auth-Type := Accept
+				}
+				update reply {
+					&Tunnel-Type := VLAN
+					&Tunnel-Medium-Type := IEEE-802
+					&Tunnel-Private-Group-Id := "999"
+				}
+
+				#--- Отправляем на captive portal для регистрации ---
+				nac_url_redirect
+			}
+			else {
+				update control {
+					&Auth-Type := Accept
+				}
+			}
+		}
+		else {
+			#--- Стандартный RADIUS (VPN, Wi-Fi WPA2-Enterprise) ---
+
+			#--- Проверяем в SQL (radcheck/radreply) ---
+			sql
+
+			#--- Если не найден в SQL — проверяем в LDAP ---
+			if (!ok && !updated) {
+				ldap
+				if (ok || updated) {
+					update control {
+						&Auth-Type := ldap
+					}
+				}
+			}
+		}
+
+		#--- Кэш сессий в Redis (ускоряет re-auth) ---
+		update control {
+			&Cache-Status-Only := yes
+		}
+		cache_auth
+
+		#--- Expiration: проверяем время действия аккаунта ---
+		expiration
+		logintime
+	}
+
+	######################################################################
+	#  AUTHENTICATE — проверка credentials
+	######################################################################
+
+	authenticate {
+
+		#--- EAP (802.1X) ---
+		Auth-Type EAP {
+			eap
+		}
+
+		#--- LDAP bind (для PAP через AD) ---
+		Auth-Type ldap {
+			ldap
+		}
+
+		#--- PAP (для гостевых аккаунтов из SQL) ---
+		Auth-Type PAP {
+			pap
+		}
+
+		#--- MS-CHAP (для PEAP-MSCHAPv2 inner → AD через winbind) ---
+		Auth-Type MS-CHAP {
+			mschap
+		}
+	}
+
+	######################################################################
+	#  POST-AUTH — авторизация и обогащение ответа
+	######################################################################
+
+	post-auth {
+
+		#--- 1. Получаем группы пользователя из LDAP/AD ---
+		if (&control.Auth-Type == "EAP" || &control.Auth-Type == "ldap") {
+			#--- LDAP group membership для авторизации ---
+			ldap
+		}
+
+		#--- 2. SQL group-based авторизация (VLAN из radgroupreply) ---
+		sql
+
+		#--- 3. NAC Policy Evaluation ---
+		#  Вызываем policy-engine через REST API
+		#  Передаём: username, MAC, NAS-IP, device profile, groups
+		#  Получаем: VLAN, ACL, SGT, URL-redirect, CoA-action
+		#
+		#  Это аналог ISE Authorization Policy evaluation
+
+		nac_policy_eval
+
+		#--- 4. Применяем результат политики ---
+		#  policy-engine возвращает JSON → парсим через rest module
+		#  и обновляем reply-атрибуты
+
+		if (&rest.HTTP-Status-Code == 200) {
+			update reply {
+				&Tunnel-Type := "%{rest.Tunnel-Type}"
+				&Tunnel-Medium-Type := "%{rest.Tunnel-Medium-Type}"
+				&Tunnel-Private-Group-Id := "%{rest.Tunnel-Private-Group-Id}"
+			}
+
+			#--- dACL (если policy-engine вернул) ---
+			if ("%{rest.Filter-Id}" != "") {
+				update reply {
+					&Filter-Id := "%{rest.Filter-Id}"
+				}
+			}
+
+			#--- URL-redirect для posture/guest (Cisco AVPair) ---
+			if ("%{rest.url-redirect}" != "") {
+				update reply {
+					&Cisco-AVPair += "url-redirect-acl=%{rest.url-redirect-acl}"
+					&Cisco-AVPair += "url-redirect=%{rest.url-redirect}"
+				}
+			}
+		}
+		else {
+			#--- Fallback: если policy-engine недоступен ---
+			#  Применяем SQL-based авторизацию (группа → VLAN)
+			#  Это обеспечивает работу при отказе policy-engine
+		}
+
+		#--- 5. Профилирование (async) ---
+		#  Отправляем данные в profiler через REST
+		#  DHCP fingerprint, User-Agent, NAS-порт → profiler → Fingerbank
+
+		nac_profiling_trigger
+
+		#--- 6. Кэшируем результат аутентификации ---
+		cache_auth
+
+		#--- 7. Логируем в SQL (radpostauth) ---
+		sql
+
+		#--- 8. Публикуем событие аутентификации в Kafka ---
+		#  Через exec module → kafkacat (или через REST → policy-engine → Kafka)
+
+		nac_kafka_auth_event
+
+		#--- Если Access-Reject ---
+		Post-Auth-Type REJECT {
+			sql
+			nac_kafka_auth_event
+			attr_filter.access_reject
+		}
+	}
+
+	######################################################################
+	#  ACCOUNTING — учёт сессий
+	######################################################################
+
+	accounting {
+
+		#--- Preprocess: нормализация ---
+		preprocess
+
+		#--- Обновляем session directory в Redis ---
+		update control {
+			&Cache-TTL := 86400
+		}
+		cache_acct
+
+		#--- SQL accounting (radacct) ---
+		sql
+
+		#--- Обновляем endpoint last_seen ---
+		nac_endpoint_update
+
+		#--- Accounting-Stop: очищаем кэш сессии ---
+		if (&Acct-Status-Type == "Stop") {
+			cache_acct_clear
+		}
+
+		#--- Публикуем в Kafka ---
+		nac_kafka_session_event
+	}
+
+	######################################################################
+	#  PRE-PROXY / POST-PROXY (для multi-site) 
+	######################################################################
+
+	pre-proxy {
+		attr_filter.pre-proxy
+	}
+
+	post-proxy {
+		attr_filter.post-proxy
+		eap
+	}
+}

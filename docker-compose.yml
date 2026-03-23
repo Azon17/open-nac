@@ -1,0 +1,766 @@
+###############################################################################
+#  Open NAC System — Docker Compose (Central Site / HQ)
+#  Аналог Cisco ISE на базе open-source компонентов
+#  
+#  Стек:
+#    AAA:        FreeRADIUS 3.2.x (x2, active-active) + tac_plus-ng
+#    Profiling:  Fingerbank API + p0f + nmap-scanner
+#    Posture:    osquery/Fleet интеграция через policy-engine
+#    Policy:     Python FastAPI policy-engine
+#    Portal:     Guest/BYOD captive portal (React + FastAPI)
+#    Admin:      React admin dashboard + REST API
+#    DB:         MariaDB Galera Cluster (3 узла)
+#    Cache:      Redis Sentinel (3 узла)
+#    PKI:        EJBCA Community Edition
+#    Messaging:  Apache Kafka + Zookeeper
+#    Monitoring: Elasticsearch + Logstash + Kibana + Prometheus + Grafana
+#    HA:         Keepalived (VIP failover для RADIUS)
+#
+#  Требования: Docker 24+, Docker Compose v2.20+, 32GB RAM, 8 CPU cores
+#  
+#  Запуск:
+#    cp .env.example .env  # настроить переменные
+#    docker compose up -d
+#    docker compose ps
+###############################################################################
+
+name: open-nac
+
+x-common-env: &common-env
+  TZ: Europe/Amsterdam
+  MYSQL_HOST: mariadb-1
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: ${MYSQL_DATABASE:-radius}
+  MYSQL_USER: ${MYSQL_USER:-radius}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme_radius_pwd}
+  REDIS_HOST: redis-1
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+x-galera-env: &galera-env
+  MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-changeme_root_pwd}
+  MARIADB_DATABASE: ${MYSQL_DATABASE:-radius}
+  MARIADB_USER: ${MYSQL_USER:-radius}
+  MARIADB_PASSWORD: ${MYSQL_PASSWORD:-changeme_radius_pwd}
+  MARIADB_GALERA_MARIABACKUP_PASSWORD: ${GALERA_BACKUP_PWD:-changeme_backup_pwd}
+
+x-healthcheck-db: &healthcheck-db
+  test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+  interval: 15s
+  timeout: 5s
+  retries: 5
+  start_period: 60s
+
+x-healthcheck-redis: &healthcheck-redis
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 10s
+  timeout: 3s
+  retries: 5
+
+networks:
+  nac-core:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  nac-mgmt:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.1.0/24
+  nac-data:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.2.0/24
+
+volumes:
+  galera-1-data:
+  galera-2-data:
+  galera-3-data:
+  redis-1-data:
+  redis-2-data:
+  redis-3-data:
+  kafka-data:
+  zookeeper-data:
+  elasticsearch-data:
+  grafana-data:
+  ejbca-data:
+  freeradius-1-config:
+  freeradius-2-config:
+  policy-engine-data:
+  profiler-data:
+  portal-data:
+  prometheus-data:
+  logstash-pipeline:
+
+services:
+
+  #==========================================================================
+  #  УРОВЕНЬ ДАННЫХ: MariaDB Galera Cluster (3 узла, multi-master)
+  #==========================================================================
+
+  mariadb-1:
+    image: bitnami/mariadb-galera:11.4
+    container_name: nac-mariadb-1
+    hostname: mariadb-1
+    environment:
+      <<: *galera-env
+      MARIADB_GALERA_CLUSTER_BOOTSTRAP: "yes"
+      MARIADB_GALERA_CLUSTER_NAME: nac_galera
+      MARIADB_GALERA_CLUSTER_ADDRESS: gcomm://mariadb-1,mariadb-2,mariadb-3
+      MARIADB_GALERA_NODE_ADDRESS: mariadb-1
+      MARIADB_EXTRA_FLAGS: >-
+        --max-connections=500
+        --innodb-buffer-pool-size=2G
+        --innodb-log-file-size=512M
+        --wsrep-sync-wait=1
+        --character-set-server=utf8mb4
+        --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - galera-1-data:/bitnami/mariadb
+      - ./config/mariadb/initdb.d:/docker-entrypoint-initdb.d:ro
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.10
+    healthcheck: *healthcheck-db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+
+  mariadb-2:
+    image: bitnami/mariadb-galera:11.4
+    container_name: nac-mariadb-2
+    hostname: mariadb-2
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+    environment:
+      <<: *galera-env
+      MARIADB_GALERA_CLUSTER_BOOTSTRAP: "no"
+      MARIADB_GALERA_CLUSTER_NAME: nac_galera
+      MARIADB_GALERA_CLUSTER_ADDRESS: gcomm://mariadb-1,mariadb-2,mariadb-3
+      MARIADB_GALERA_NODE_ADDRESS: mariadb-2
+      MARIADB_EXTRA_FLAGS: >-
+        --max-connections=500
+        --innodb-buffer-pool-size=2G
+        --wsrep-sync-wait=1
+    volumes:
+      - galera-2-data:/bitnami/mariadb
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.11
+    healthcheck: *healthcheck-db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+
+  mariadb-3:
+    image: bitnami/mariadb-galera:11.4
+    container_name: nac-mariadb-3
+    hostname: mariadb-3
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+    environment:
+      <<: *galera-env
+      MARIADB_GALERA_CLUSTER_BOOTSTRAP: "no"
+      MARIADB_GALERA_CLUSTER_NAME: nac_galera
+      MARIADB_GALERA_CLUSTER_ADDRESS: gcomm://mariadb-1,mariadb-2,mariadb-3
+      MARIADB_GALERA_NODE_ADDRESS: mariadb-3
+      MARIADB_EXTRA_FLAGS: >-
+        --max-connections=500
+        --innodb-buffer-pool-size=2G
+        --wsrep-sync-wait=1
+    volumes:
+      - galera-3-data:/bitnami/mariadb
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.12
+    healthcheck: *healthcheck-db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+
+  #--- ProxySQL для R/W splitting и балансировки Galera --------------------
+
+  proxysql:
+    image: proxysql/proxysql:2.6
+    container_name: nac-proxysql
+    hostname: proxysql
+    volumes:
+      - ./config/proxysql/proxysql.cnf:/etc/proxysql.cnf:ro
+    ports:
+      - "6033:6033"   # MySQL frontend
+      - "6032:6032"   # ProxySQL admin
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.15
+      nac-core:
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+    restart: unless-stopped
+
+  #==========================================================================
+  #  КЭШИРОВАНИЕ: Redis Sentinel (3 узла)
+  #==========================================================================
+
+  redis-1:
+    image: bitnami/redis:7.4
+    container_name: nac-redis-1
+    hostname: redis-1
+    environment:
+      REDIS_REPLICATION_MODE: master
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+      REDIS_MAXMEMORY: 1gb
+      REDIS_MAXMEMORY_POLICY: allkeys-lru
+    volumes:
+      - redis-1-data:/bitnami/redis/data
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.20
+      nac-core:
+    healthcheck: *healthcheck-redis
+    restart: unless-stopped
+
+  redis-2:
+    image: bitnami/redis:7.4
+    container_name: nac-redis-2
+    hostname: redis-2
+    environment:
+      REDIS_REPLICATION_MODE: slave
+      REDIS_MASTER_HOST: redis-1
+      REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+    volumes:
+      - redis-2-data:/bitnami/redis/data
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.21
+      nac-core:
+    depends_on:
+      redis-1:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis-3:
+    image: bitnami/redis:7.4
+    container_name: nac-redis-3
+    hostname: redis-3
+    environment:
+      REDIS_REPLICATION_MODE: slave
+      REDIS_MASTER_HOST: redis-1
+      REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+    volumes:
+      - redis-3-data:/bitnami/redis/data
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.22
+      nac-core:
+    depends_on:
+      redis-1:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis-sentinel:
+    image: bitnami/redis-sentinel:7.4
+    container_name: nac-redis-sentinel
+    environment:
+      REDIS_SENTINEL_QUORUM: "2"
+      REDIS_MASTER_HOST: redis-1
+      REDIS_MASTER_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
+      REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS: "5000"
+      REDIS_SENTINEL_FAILOVER_TIMEOUT: "10000"
+    networks:
+      nac-data:
+      nac-core:
+    depends_on:
+      - redis-1
+      - redis-2
+      - redis-3
+    restart: unless-stopped
+
+  #==========================================================================
+  #  MESSAGING: Apache Kafka + Zookeeper
+  #==========================================================================
+
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: nac-zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_HEAP_SIZE: "512"
+    volumes:
+      - zookeeper-data:/bitnami/zookeeper
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.30
+    restart: unless-stopped
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: nac-kafka
+    hostname: kafka
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "6"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_LOG_RETENTION_HOURS: "168"
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.31
+      nac-core:
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  #--- Kafka topic initialization ------------------------------------------
+
+  kafka-init:
+    image: bitnami/kafka:3.7
+    container_name: nac-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      nac-data:
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Creating NAC Kafka topics..."
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.auth.events        --partitions 6 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.endpoint.profiles   --partitions 3 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.posture.status      --partitions 3 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.session.state       --partitions 6 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.coa.requests        --partitions 3 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.syslog.radius       --partitions 6 --replication-factor 1
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.profiler.raw        --partitions 3 --replication-factor 1
+        echo "Topics created."
+    restart: "no"
+
+  #==========================================================================
+  #  AAA ЯДРО: FreeRADIUS (x2, active-active) + Keepalived
+  #==========================================================================
+
+  freeradius-1:
+    image: freeradius/freeradius-server:3.2.6
+    container_name: nac-freeradius-1
+    hostname: freeradius-1
+    volumes:
+      - ./config/freeradius/radiusd.conf:/etc/raddb/radiusd.conf:ro
+      - ./config/freeradius/sites-enabled:/etc/raddb/sites-enabled:ro
+      - ./config/freeradius/mods-enabled:/etc/raddb/mods-enabled:ro
+      - ./config/freeradius/policy.d:/etc/raddb/policy.d:ro
+      - ./config/freeradius/certs:/etc/raddb/certs:ro
+      - ./config/freeradius/clients.conf:/etc/raddb/clients.conf:ro
+      - ./config/freeradius/proxy.conf:/etc/raddb/proxy.conf:ro
+      - ./config/freeradius/huntgroups:/etc/raddb/huntgroups:ro
+    environment:
+      <<: *common-env
+      RADIUS_NODE_ID: freeradius-1
+    ports:
+      - "1812:1812/udp"    # Authentication
+      - "1813:1813/udp"    # Accounting
+      - "3799:3799/udp"    # CoA/DM
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.10
+      nac-data:
+    cap_add:
+      - NET_ADMIN           # для Keepalived VIP
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+      redis-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "radclient", "-c", "1", "-t", "3", "127.0.0.1:18121", "status", "testing123"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+
+  freeradius-2:
+    image: freeradius/freeradius-server:3.2.6
+    container_name: nac-freeradius-2
+    hostname: freeradius-2
+    volumes:
+      - ./config/freeradius/radiusd.conf:/etc/raddb/radiusd.conf:ro
+      - ./config/freeradius/sites-enabled:/etc/raddb/sites-enabled:ro
+      - ./config/freeradius/mods-enabled:/etc/raddb/mods-enabled:ro
+      - ./config/freeradius/policy.d:/etc/raddb/policy.d:ro
+      - ./config/freeradius/certs:/etc/raddb/certs:ro
+      - ./config/freeradius/clients.conf:/etc/raddb/clients.conf:ro
+      - ./config/freeradius/proxy.conf:/etc/raddb/proxy.conf:ro
+      - ./config/freeradius/huntgroups:/etc/raddb/huntgroups:ro
+    environment:
+      <<: *common-env
+      RADIUS_NODE_ID: freeradius-2
+    ports:
+      - "11812:1812/udp"
+      - "11813:1813/udp"
+      - "13799:3799/udp"
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.11
+      nac-data:
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+      redis-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "radclient", "-c", "1", "-t", "3", "127.0.0.1:18121", "status", "testing123"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+
+  #==========================================================================
+  #  TACACS+: tac_plus-ng
+  #==========================================================================
+
+  tacacs:
+    image: lfkeitel/tacacs_plus:latest
+    container_name: nac-tacacs
+    hostname: tacacs
+    volumes:
+      - ./config/tacacs/tac_plus.cfg:/etc/tac_plus/tac_plus.cfg:ro
+    ports:
+      - "49:49/tcp"
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.15
+    restart: unless-stopped
+
+  #==========================================================================
+  #  АНАЛИТИКА: Policy Engine + Profiling Engine + Posture Engine
+  #==========================================================================
+
+  policy-engine:
+    build:
+      context: ./services/policy-engine
+      dockerfile: Dockerfile
+    container_name: nac-policy-engine
+    hostname: policy-engine
+    environment:
+      <<: *common-env
+      FINGERBANK_API_KEY: ${FINGERBANK_API_KEY:-}
+      FLEET_SERVER_URL: ${FLEET_SERVER_URL:-http://fleet:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8000:8000"    # FastAPI
+    volumes:
+      - policy-engine-data:/app/data
+      - ./config/policies:/app/policies:ro
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.20
+      nac-data:
+      nac-mgmt:
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+      redis-1:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+
+  profiler:
+    build:
+      context: ./services/profiler
+      dockerfile: Dockerfile
+    container_name: nac-profiler
+    hostname: profiler
+    environment:
+      <<: *common-env
+      FINGERBANK_API_KEY: ${FINGERBANK_API_KEY:-}
+      P0F_SOCKET: /var/run/p0f/p0f.sock
+      NMAP_SCAN_ENABLED: ${NMAP_SCAN_ENABLED:-false}
+      NMAP_SCAN_INTERVAL: ${NMAP_SCAN_INTERVAL:-3600}
+    volumes:
+      - profiler-data:/app/data
+      - /var/run/p0f:/var/run/p0f:ro
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.21
+      nac-data:
+    depends_on:
+      - policy-engine
+      - kafka
+    restart: unless-stopped
+
+  posture-engine:
+    build:
+      context: ./services/posture-engine
+      dockerfile: Dockerfile
+    container_name: nac-posture-engine
+    hostname: posture-engine
+    environment:
+      <<: *common-env
+      FLEET_SERVER_URL: ${FLEET_SERVER_URL:-http://fleet:8080}
+      FLEET_API_TOKEN: ${FLEET_API_TOKEN:-}
+      COMPLIANCE_CHECK_INTERVAL: "300"
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.22
+      nac-data:
+    depends_on:
+      - policy-engine
+      - kafka
+    restart: unless-stopped
+
+  #==========================================================================
+  #  ПОРТАЛЫ: Guest Portal + Admin UI
+  #==========================================================================
+
+  guest-portal:
+    build:
+      context: ./services/guest-portal
+      dockerfile: Dockerfile
+    container_name: nac-guest-portal
+    hostname: guest-portal
+    environment:
+      <<: *common-env
+      PORTAL_SECRET_KEY: ${PORTAL_SECRET_KEY:-changeme_portal_secret}
+      PORTAL_OAUTH2_ENABLED: ${PORTAL_OAUTH2_ENABLED:-true}
+      PORTAL_SMS_ENABLED: ${PORTAL_SMS_ENABLED:-false}
+    ports:
+      - "8443:8443"     # HTTPS (captive portal)
+    volumes:
+      - portal-data:/app/data
+      - ./config/portal/templates:/app/templates:ro
+      - ./config/certs/portal:/app/certs:ro
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.30
+      nac-data:
+      nac-mgmt:
+    depends_on:
+      - policy-engine
+    restart: unless-stopped
+
+  admin-ui:
+    build:
+      context: ./services/admin-ui
+      dockerfile: Dockerfile
+    container_name: nac-admin-ui
+    hostname: admin-ui
+    environment:
+      <<: *common-env
+      API_BASE_URL: http://policy-engine:8000
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:-changeme_admin_secret}
+    ports:
+      - "443:443"       # HTTPS admin dashboard
+    volumes:
+      - ./config/certs/admin:/app/certs:ro
+    networks:
+      nac-mgmt:
+        ipv4_address: 172.30.1.10
+      nac-core:
+    depends_on:
+      - policy-engine
+    restart: unless-stopped
+
+  #==========================================================================
+  #  PKI: EJBCA Community Edition
+  #==========================================================================
+
+  ejbca:
+    image: keyfactor/ejbca-ce:8.3
+    container_name: nac-ejbca
+    hostname: ejbca
+    environment:
+      DATABASE_JDBC_URL: jdbc:mariadb://proxysql:6033/ejbca?characterEncoding=utf8
+      DATABASE_USER: ${EJBCA_DB_USER:-ejbca}
+      DATABASE_PASSWORD: ${EJBCA_DB_PASSWORD:-changeme_ejbca_pwd}
+      TLS_SETUP_ENABLED: "simple"
+    ports:
+      - "8080:8080"     # HTTP (redirect)
+      - "8444:8443"     # HTTPS admin
+    volumes:
+      - ejbca-data:/opt/keyfactor/ejbca/p12
+    networks:
+      nac-core:
+        ipv4_address: 172.30.0.40
+      nac-data:
+    depends_on:
+      mariadb-1:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: "2"
+
+  #==========================================================================
+  #  МОНИТОРИНГ: ELK Stack + Prometheus + Grafana
+  #==========================================================================
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: nac-elasticsearch
+    hostname: elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+      cluster.name: nac-logging
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      nac-data:
+        ipv4_address: 172.30.2.40
+      nac-mgmt:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '(green|yellow)'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: "2"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    container_name: nac-logstash
+    hostname: logstash
+    volumes:
+      - ./config/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    environment:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "5514:5514/udp"    # Syslog from FreeRADIUS
+      - "5044:5044"        # Beats input
+    networks:
+      nac-data:
+      nac-core:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: nac-kibana
+    hostname: kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      nac-mgmt:
+      nac-data:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: nac-prometheus
+    hostname: prometheus
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      nac-mgmt:
+      nac-core:
+      nac-data:
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: nac-grafana
+    hostname: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme_grafana_pwd}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    networks:
+      nac-mgmt:
+        ipv4_address: 172.30.1.20
+      nac-data:
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  #--- Node Exporter для метрик хоста -------------------------------------
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    container_name: nac-node-exporter
+    hostname: node-exporter
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    networks:
+      nac-mgmt:
+    restart: unless-stopped

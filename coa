@@ -1,0 +1,76 @@
+###############################################################################
+#  Open NAC — FreeRADIUS CoA Virtual Server
+#  Эквивалент: Cisco ISE CoA engine (RFC 5176)
+#
+#  Два режима:
+#    1. ПРИЁМ CoA от policy-engine (re-auth, disconnect, bounce-port)
+#    2. ОТПРАВКА CoA к NAD (через originate-coa или radclient)
+#
+#  Типичные сценарии:
+#    - Posture status changed → CoA Reauthenticate → новый VLAN
+#    - Guest authenticated → CoA Reauthenticate → гостевой VLAN
+#    - Endpoint profiled → CoA Reauthenticate → профильный VLAN
+#    - Admin disconnect → CoA Disconnect-Request → сессия завершена
+#    - BYOD onboarded → CoA Port-Bounce → клиент пересоединяется с cert
+###############################################################################
+
+server coa {
+
+	listen {
+		type = coa
+		ipaddr = *
+		port = 3799
+	}
+
+	######################################################################
+	#  RECV CoA-Request (от policy-engine или admin)
+	######################################################################
+
+	recv-coa {
+
+		#--- Валидируем источник ---
+		#  Только доверенные клиенты (policy-engine, admin) могут отправлять CoA
+
+		#--- Логируем входящий CoA ---
+		update request {
+			&Module-Failure-Message := "CoA received: user=%{User-Name} mac=%{Calling-Station-Id} action=%{Cisco-AVPair}"
+		}
+
+		#--- Определяем NAS для которого предназначен CoA ---
+		#  Ищем активную сессию в Redis по MAC или username
+
+		cache_acct
+
+		#--- Формируем CoA для отправки на NAD ---
+		#  policy-engine указывает тип действия в атрибутах:
+		#    Cisco-AVPair = "subscriber:command=reauthenticate"
+		#    Cisco-AVPair = "subscriber:command=bounce-host-port"
+		#    или Event-Timestamp + Acct-Session-Id для disconnect
+
+		ok
+	}
+
+	######################################################################
+	#  SEND CoA-ACK/NAK
+	######################################################################
+
+	send-coa {
+		ok
+	}
+
+	######################################################################
+	#  RECV Disconnect-Request
+	######################################################################
+
+	recv-disconnect {
+
+		#--- Ищем сессию ---
+		cache_acct
+
+		ok
+	}
+
+	send-disconnect {
+		ok
+	}
+}
