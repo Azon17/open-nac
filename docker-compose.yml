@@ -268,30 +268,36 @@ services:
   #==========================================================================
 
   zookeeper:
-    image: bitnami/zookeeper:latest
+    image: zookeeper:3.9
     container_name: nac-zookeeper
     environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_4LW_COMMANDS_WHITELIST: "ruok,stat"
     volumes:
-      - zookeeper-data:/bitnami/zookeeper
+      - zookeeper-data:/data
     networks:
       nac-data:
         ipv4_address: 172.30.2.30
     restart: unless-stopped
 
   kafka:
-    image: bitnami/kafka:latest
+    image: apache/kafka:3.7.1
     container_name: nac-kafka
     hostname: kafka
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_NUM_PARTITIONS: "6"
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: "6"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
       KAFKA_HEAP_OPTS: "-Xms512m -Xmx1g"
+      CLUSTER_ID: "nac-kafka-cluster-001"
     volumes:
-      - kafka-data:/bitnami/kafka
+      - kafka-data:/tmp/kraft-combined-logs
     networks:
       nac-data:
         ipv4_address: 172.30.2.31
@@ -299,7 +305,7 @@ services:
     depends_on:
       - zookeeper
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -307,7 +313,7 @@ services:
     restart: unless-stopped
 
   kafka-init:
-    image: bitnami/kafka:latest
+    image: apache/kafka:3.7.1
     container_name: nac-kafka-init
     depends_on:
       kafka:
@@ -318,12 +324,12 @@ services:
     command:
       - |
         echo "Creating NAC Kafka topics..."
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.auth.events --partitions 6 --replication-factor 1
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.endpoint.profiles --partitions 3 --replication-factor 1
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.posture.status --partitions 3 --replication-factor 1
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.session.state --partitions 6 --replication-factor 1
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.coa.requests --partitions 3 --replication-factor 1
-        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.syslog.radius --partitions 6 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.auth.events --partitions 6 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.endpoint.profiles --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.posture.status --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.session.state --partitions 6 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.coa.requests --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic nac.syslog.radius --partitions 6 --replication-factor 1
         echo "Done."
     restart: "no"
 
@@ -513,28 +519,30 @@ services:
   #  PKI
   #==========================================================================
 
-  ejbca:
-    image: keyfactor/ejbca-ce:8.3
-    container_name: nac-ejbca
-    hostname: ejbca
-    environment:
-      DATABASE_JDBC_URL: jdbc:mariadb://mariadb-1:3306/ejbca?characterEncoding=utf8
-      DATABASE_USER: ${EJBCA_DB_USER:-ejbca}
-      DATABASE_PASSWORD: ${EJBCA_DB_PASSWORD:-changeme_ejbca_pwd}
-      TLS_SETUP_ENABLED: "simple"
-    ports:
-      - "8081:8080"
-      - "8444:8443"
-    volumes:
-      - ejbca-data:/opt/keyfactor/ejbca/p12
-    networks:
-      nac-core:
-        ipv4_address: 172.30.0.40
-      nac-data:
-    depends_on:
-      mariadb-1:
-        condition: service_healthy
-    restart: unless-stopped
+  # EJBCA disabled — image not available via mirror
+  # Uncomment when direct Docker Hub access is available
+  # ejbca:
+  #   image: keyfactor/ejbca-ce:8.3
+  #   container_name: nac-ejbca
+  #   hostname: ejbca
+  #   environment:
+  #     DATABASE_JDBC_URL: jdbc:mariadb://mariadb-1:3306/ejbca?characterEncoding=utf8
+  #     DATABASE_USER: ${EJBCA_DB_USER:-ejbca}
+  #     DATABASE_PASSWORD: ${EJBCA_DB_PASSWORD:-changeme_ejbca_pwd}
+  #     TLS_SETUP_ENABLED: "simple"
+  #   ports:
+  #     - "8081:8080"
+  #     - "8444:8443"
+  #   volumes:
+  #     - ejbca-data:/opt/keyfactor/ejbca/p12
+  #   networks:
+  #     nac-core:
+  #       ipv4_address: 172.30.0.40
+  #     nac-data:
+  #   depends_on:
+  #     mariadb-1:
+  #       condition: service_healthy
+  #   restart: unless-stopped
 
   #==========================================================================
   #  Monitoring: ELK + Prometheus + Grafana
