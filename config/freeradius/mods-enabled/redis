@@ -1,0 +1,96 @@
+###############################################################################
+#  Open NAC — FreeRADIUS Redis Module
+#  Эквивалент: Cisco ISE Light Data Distribution (LDD) / Session Directory
+#
+#  Функции:
+#    1. cache_auth   — кэш результатов аутентификации (ускоряет re-auth)
+#    2. cache_acct   — session directory (MAC → NAS, port, VLAN, username)
+#    3. Session lookup для CoA (найти NAS по MAC)
+#
+#  Redis Sentinel обеспечивает HA — при отказе master Redis
+#  автоматически промоутится replica
+###############################################################################
+
+#--- Подключение к Redis ---
+
+redis {
+	server = "${REDIS_HOST:-redis-1}"
+	port = ${REDIS_PORT:-6379}
+	password = "${REDIS_PASSWORD}"
+	database = 0
+
+	pool {
+		start = 5
+		min = 3
+		max = 20
+		spare = 5
+		uses = 0
+		retry_delay = 10
+		lifetime = 86400
+		idle_timeout = 600
+	}
+}
+
+#==================================================================
+#  Cache: результаты аутентификации
+#  Ключ: "auth:<MAC>" → TTL 1 час
+#  При re-auth в течение TTL — мгновенный ответ без AD/LDAP
+#==================================================================
+
+cache cache_auth {
+	driver = "rlm_cache_redis"
+	server = "${REDIS_HOST:-redis-1}"
+	port = ${REDIS_PORT:-6379}
+	password = "${REDIS_PASSWORD}"
+	database = 1
+
+	key = "auth:%{tolower:%{Calling-Station-Id}}"
+	ttl = 3600
+
+	update {
+		&reply.Tunnel-Type := &reply.Tunnel-Type
+		&reply.Tunnel-Medium-Type := &reply.Tunnel-Medium-Type
+		&reply.Tunnel-Private-Group-Id := &reply.Tunnel-Private-Group-Id
+		&reply.Filter-Id := &reply.Filter-Id
+		&control.Cache-Status-Only := no
+	}
+}
+
+#==================================================================
+#  Cache: Session Directory (для accounting и CoA)
+#  Ключ: "session:<MAC>" → TTL 24 часа
+#  Содержит: NAS-IP, NAS-Port, Username, VLAN, Session-ID
+#  Используется CoA-сервером для нахождения NAD по MAC
+#==================================================================
+
+cache cache_acct {
+	driver = "rlm_cache_redis"
+	server = "${REDIS_HOST:-redis-1}"
+	port = ${REDIS_PORT:-6379}
+	password = "${REDIS_PASSWORD}"
+	database = 2
+
+	key = "session:%{tolower:%{Calling-Station-Id}}"
+	ttl = 86400
+
+	update {
+		&session-state.NAS-IP-Address := &NAS-IP-Address
+		&session-state.NAS-Port-Id := &NAS-Port-Id
+		&session-state.Acct-Session-Id := &Acct-Session-Id
+		&session-state.User-Name := &User-Name
+		&session-state.Framed-IP-Address := &Framed-IP-Address
+		&session-state.Tunnel-Private-Group-Id := &reply.Tunnel-Private-Group-Id
+	}
+}
+
+#--- Очистка сессии при Acct-Stop ---
+cache cache_acct_clear {
+	driver = "rlm_cache_redis"
+	server = "${REDIS_HOST:-redis-1}"
+	port = ${REDIS_PORT:-6379}
+	password = "${REDIS_PASSWORD}"
+	database = 2
+
+	key = "session:%{tolower:%{Calling-Station-Id}}"
+	ttl = 0
+}

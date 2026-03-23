@@ -1,0 +1,177 @@
+###############################################################################
+#  Open NAC — unlang Policy Rules
+#  Эквивалент: Cisco ISE Authorization Policy + Policy Sets
+#
+#  Эти правила выполняются внутри FreeRADIUS (быстро, без REST-вызова)
+#  для базовых решений. Сложная логика делегируется policy-engine.
+#
+#  Порядок приоритета:
+#    1. unlang rules (этот файл) — мгновенные решения
+#    2. SQL group-based auth — VLAN из radgroupreply
+#    3. REST → policy-engine — сложные условия, profiling, posture
+#
+#  При отказе policy-engine: unlang + SQL обеспечивают fallback
+###############################################################################
+
+#==================================================================
+#  VLAN Assignment по AD-группам (базовый, без policy-engine)
+#  Эквивалент: ISE Authorization Rule "If AD-Group = X then VLAN Y"
+#==================================================================
+
+policy nac_vlan_by_group {
+	#--- Domain Admins → Management VLAN ---
+	if (&LDAP-Group[*] =~ /CN=Domain Admins/) {
+		update reply {
+			&Tunnel-Type := VLAN
+			&Tunnel-Medium-Type := IEEE-802
+			&Tunnel-Private-Group-Id := "10"
+		}
+	}
+
+	#--- IT Department → IT VLAN ---
+	elsif (&LDAP-Group[*] =~ /CN=IT-Department/) {
+		update reply {
+			&Tunnel-Type := VLAN
+			&Tunnel-Medium-Type := IEEE-802
+			&Tunnel-Private-Group-Id := "100"
+		}
+	}
+
+	#--- Все сотрудники → Employee VLAN ---
+	elsif (&LDAP-Group[*] =~ /CN=Domain Users/) {
+		update reply {
+			&Tunnel-Type := VLAN
+			&Tunnel-Medium-Type := IEEE-802
+			&Tunnel-Private-Group-Id := "100"
+		}
+	}
+
+	#--- Контракторы ---
+	elsif (&LDAP-Group[*] =~ /CN=Contractors/) {
+		update reply {
+			&Tunnel-Type := VLAN
+			&Tunnel-Medium-Type := IEEE-802
+			&Tunnel-Private-Group-Id := "200"
+		}
+	}
+
+	#--- Не удалось определить группу → Quarantine ---
+	else {
+		update reply {
+			&Tunnel-Type := VLAN
+			&Tunnel-Medium-Type := IEEE-802
+			&Tunnel-Private-Group-Id := "999"
+		}
+	}
+}
+
+#==================================================================
+#  URL Redirect для Captive Portal
+#  Эквивалент: ISE Authorization Profile с Web Redirect
+#==================================================================
+
+policy nac_captive_portal_redirect {
+	#--- Cisco: используем AVPair ---
+	if (&NAS-Vendor == 9) {
+		update reply {
+			&Cisco-AVPair += "url-redirect-acl=ACL-WEBAUTH-REDIRECT"
+			&Cisco-AVPair += "url-redirect=https://portal.nac.local:8443/guest/register?mac=%{tolower:%{Calling-Station-Id}}"
+		}
+	}
+
+	#--- Juniper: используем Juniper-Switching-Filter ---
+	elsif (&NAS-Vendor == 2636) {
+		update reply {
+			&Juniper-Switching-Filter := "match destination-port 80 then redirect https://portal.nac.local:8443/guest/register"
+		}
+	}
+
+	#--- Aruba/HPE: используем URL-redirect ---
+	elsif (&NAS-Vendor == 14823) {
+		update reply {
+			&Aruba-Port-Bounce-Host := 0
+			&Reply-Message := "https://portal.nac.local:8443/guest/register?mac=%{tolower:%{Calling-Station-Id}}"
+		}
+	}
+
+	#--- Generic: Filter-Id ---
+	else {
+		update reply {
+			&Filter-Id := "REDIRECT-TO-PORTAL"
+		}
+	}
+}
+
+#==================================================================
+#  Posture-aware авторизация
+#  Эквивалент: ISE "If Posture = Compliant then Full Access"
+#==================================================================
+
+policy nac_posture_check {
+	#--- Проверяем posture_status из nac_endpoints (через Redis cache) ---
+	#  В production: policy-engine проверяет posture через Fleet/osquery
+	#  и обновляет Redis cache
+	
+	#--- Пример: если posture = non_compliant → quarantine VLAN ---
+	#  Эта проверка выполняется через REST → policy-engine
+	#  и результат применяется в post-auth default server
+
+	ok
+}
+
+#==================================================================
+#  MAC Address Normalization
+#  Приводит MAC к единому формату: aa:bb:cc:dd:ee:ff (lowercase, colons)
+#==================================================================
+
+policy mac_normalize {
+	if (&Calling-Station-Id) {
+		update request {
+			&Calling-Station-Id := "%{tolower:%{Calling-Station-Id}}"
+		}
+
+		#--- Заменяем разделители на двоеточия ---
+		if (&Calling-Station-Id =~ /^([0-9a-f]{2})[-.]([0-9a-f]{2})[-.]([0-9a-f]{2})[-.]([0-9a-f]{2})[-.]([0-9a-f]{2})[-.]([0-9a-f]{2})$/) {
+			update request {
+				&Calling-Station-Id := "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+			}
+		}
+
+		#--- Cisco WLC формат: xxxx.xxxx.xxxx ---
+		if (&Calling-Station-Id =~ /^([0-9a-f]{2})([0-9a-f]{2})\.([0-9a-f]{2})([0-9a-f]{2})\.([0-9a-f]{2})([0-9a-f]{2})$/) {
+			update request {
+				&Calling-Station-Id := "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+			}
+		}
+	}
+}
+
+#==================================================================
+#  Wireless SSID extraction
+#  Из Called-Station-Id (AP_MAC:SSID_NAME) извлекаем SSID
+#==================================================================
+
+policy nac_extract_ssid {
+	if (&Called-Station-Id =~ /^([0-9a-fA-F:.-]+):(.+)$/) {
+		update request {
+			&X-NAC-SSID := "%{2}"
+			&X-NAC-AP-MAC := "%{tolower:%{1}}"
+		}
+	}
+}
+
+#==================================================================
+#  Rate limiting: защита от brute-force
+#  Эквивалент: ISE "Maximum failed attempts" в Authentication Policy
+#==================================================================
+
+policy nac_rate_limit {
+	#--- Проверяем количество неудачных попыток в Redis ---
+	#  Ключ: "fail:<MAC>" или "fail:<username>"
+	#  При > 5 неудач за 5 минут → reject
+
+	#  Реализуется через Redis INCR + EXPIRE в policy-engine
+	#  или через rlm_cache + rlm_counter
+
+	ok
+}

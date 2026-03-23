@@ -1,0 +1,117 @@
+###############################################################################
+#  Open NAC — FreeRADIUS Inner Tunnel Virtual Server
+#  Эквивалент: ISE inner EAP processing (Phase 2 inside TLS tunnel)
+#
+#  Этот сервер обрабатывает ВНУТРЕННЮЮ аутентификацию:
+#    PEAP → MSCHAPv2 (пароль через AD/winbind)
+#    PEAP → GTC     (OTP/token)
+#    TTLS → PAP     (plaintext пароль через LDAP bind)
+#    TTLS → MSCHAPv2
+#
+#  Внешний EAP-TLS-туннель создаётся в default server,
+#  затем inner credentials передаются сюда.
+###############################################################################
+
+server inner-tunnel {
+
+	listen {
+		type = auth
+		ipaddr = 127.0.0.1
+		port = 18120
+	}
+
+	######################################################################
+	#  AUTHORIZE
+	######################################################################
+
+	authorize {
+
+		filter_username
+		filter_password
+
+		#--- Проверяем в SQL ---
+		sql
+
+		#--- Если не в SQL — проверяем в LDAP/AD ---
+		if (!ok && !updated) {
+			ldap
+			if (ok || updated) {
+				update control {
+					&Auth-Type := ldap
+				}
+			}
+		}
+
+		#--- MS-CHAP: нужен NT-Password или ntlm_auth ---
+		#  Для AD-пользователей: mschap модуль вызовет winbind
+		if (&EAP-Type == PEAP || &EAP-Type == TTLS) {
+			if (&MS-CHAP-Challenge) {
+				update control {
+					&Auth-Type := MS-CHAP
+				}
+			}
+		}
+
+		#--- Активируем inner EAP ---
+		inner-eap
+
+		#--- PAP: для TTLS-PAP и гостевых аккаунтов ---
+		pap
+
+		expiration
+		logintime
+	}
+
+	######################################################################
+	#  AUTHENTICATE
+	######################################################################
+
+	authenticate {
+
+		#--- Inner EAP (GTC, MSCHAPv2 inside PEAP/TTLS) ---
+		Auth-Type inner-eap {
+			inner-eap
+		}
+
+		#--- MS-CHAPv2 через winbind → Active Directory ---
+		Auth-Type MS-CHAP {
+			mschap
+		}
+
+		#--- LDAP bind (для TTLS-PAP) ---
+		Auth-Type ldap {
+			ldap
+		}
+
+		#--- PAP (для гостевых из SQL) ---
+		Auth-Type PAP {
+			pap
+		}
+	}
+
+	######################################################################
+	#  POST-AUTH
+	######################################################################
+
+	post-auth {
+
+		#--- Получаем AD-группы для авторизации ---
+		ldap
+
+		#--- SQL group reply (VLAN assignment) ---
+		sql
+
+		#--- Копируем inner username в outer сессию ---
+		#  Это нужно чтобы post-auth в default видел реальный username
+		if (&outer.request.User-Name != "") {
+			update outer.session-state {
+				&User-Name := &User-Name
+			}
+		}
+
+		Post-Auth-Type REJECT {
+			sql
+			attr_filter.access_reject
+		}
+	}
+}
