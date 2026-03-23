@@ -1,0 +1,29 @@
+datadir="/var/lib/proxysql"
+admin_variables=
+{
+    admin_credentials="admin:admin"
+    mysql_ifaces="0.0.0.0:6032"
+}
+mysql_variables=
+{
+    threads=4
+    max_connections=2048
+    interfaces="0.0.0.0:6033"
+    server_version="11.4.0"
+    monitor_username="root"
+    monitor_password="changeme_root_pwd"
+}
+mysql_servers=
+(
+    { hostgroup_id=10, hostname="mariadb-1", port=3306 },
+    { hostgroup_id=10, hostname="mariadb-2", port=3306 },
+    { hostgroup_id=10, hostname="mariadb-3", port=3306 }
+)
+mysql_users=
+(
+    { username="radius", password="changeme_radius_pwd", default_hostgroup=10 }
+)
+mysql_query_rules=
+(
+    { rule_id=1, active=1, match_pattern="^SELECT", destination_hostgroup=10, apply=1 }
+)
