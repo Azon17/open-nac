@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open NAC — Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; }
+    input, textarea, select, button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    tr:hover { background: rgba(0,0,0,0.015) !important; }
+    button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React from "https://esm.sh/react@18.3.1";
+    import ReactDOM from "https://esm.sh/react-dom@18.3.1/client";
+    import { useState, useEffect, useCallback } from "https://esm.sh/react@18.3.1";
+
+    // Inline the entire App component here for standalone deployment
+    // This avoids build tools — served directly by Nginx
+
+    const API = "/api/v1";
+
+    async function api(path, opts = {}) {
+      try {
+        const r = await fetch(API + path, { headers: { "Content-Type": "application/json", ...opts.headers }, ...opts });
+        return await r.json();
+      } catch (e) { console.error("API " + path, e); return null; }
+    }
+
+    function Badge({ children, color = "gray", small }) {
+      const colors = { green: ["#f0fdf4","#15803d","#16a34a"], red: ["#fef2f2","#b91c1c","#dc2626"], orange: ["#fff4e8","#d46a0a","#f48120"], blue: ["#eff6ff","#1d4ed8","#2563eb"], yellow: ["#fefce8","#92400e","#ca8a04"], gray: ["#f3f4f6","#6b7280","#9ca3af"] };
+      const [bg, fg, dot] = colors[color] || colors.gray;
+      return React.createElement("span", { style: { display:"inline-flex", alignItems:"center", gap:5, background:bg, color:fg, padding: small?"1px 8px":"3px 10px", borderRadius:4, fontSize: small?11:12, fontWeight:500, whiteSpace:"nowrap" } },
+        React.createElement("span", { style: { width:6, height:6, borderRadius:"50%", background:dot } }), children);
+    }
+
+    function App() {
+      const [page, setPage] = useState("dashboard");
+      const [health, setHealth] = useState(null);
+      const [data, setData] = useState(null);
+      const [search, setSearch] = useState("");
+
+      useEffect(() => { fetch("/health").then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"})); }, []);
+
+      useEffect(() => {
+        setData(null);
+        if (page === "dashboard") api("/dashboard/stats").then(setData);
+        else if (page === "endpoints") api("/endpoints?limit=100&search=" + search).then(setData);
+        else if (page === "policies") api("/policies").then(setData);
+        else if (page === "authlog") api("/auth-log?limit=100&search=" + search).then(setData);
+        else if (page === "nas") api("/network-devices").then(setData);
+        else if (page === "guests") api("/guest-accounts").then(setData);
+      }, [page, search]);
+
+      const h = React.createElement;
+      const nav = [
+        { id:"dashboard", name:"Overview", icon:"\u25CE" },
+        { section:"Access Control" },
+        { id:"endpoints", name:"Endpoints", icon:"\u25C9" },
+        { id:"policies", name:"Policies", icon:"\u2699" },
+        { id:"authlog", name:"Auth Log", icon:"\u25A4" },
+        { id:"guests", name:"Guest Portal", icon:"\u2295" },
+        { section:"Infrastructure" },
+        { id:"nas", name:"Network Devices", icon:"\u2B21" },
+      ];
+
+      const titles = { dashboard:["Overview","NAC Dashboard"], endpoints:["Endpoints","Authenticated devices"], policies:["Policies","Authorization rules"], authlog:["Auth Log","RADIUS events"], nas:["Network Devices","Switches & WLCs"], guests:["Guest Accounts","Temporary access"] };
+      const [title, sub] = titles[page] || titles.dashboard;
+
+      const sidebar = h("nav", { style: { width:220, background:"#1a1a2e", display:"flex", flexDirection:"column", flexShrink:0 } },
+        h("div", { style: { padding:"20px 18px 16px", borderBottom:"1px solid rgba(255,255,255,0.08)" } },
+          h("div", { style: { display:"flex", alignItems:"center", gap:10 } },
+            h("div", { style: { width:30, height:30, borderRadius:8, background:"linear-gradient(135deg,#f48120,#e85d04)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:15, color:"#fff" } }, "N"),
+            h("div", null, h("div", { style: { fontSize:15, fontWeight:700, color:"#fff" } }, "Open NAC"), h("div", { style: { fontSize:11, color:"rgba(255,255,255,0.4)" } }, "Network Access Control")))),
+        h("div", { style: { padding:"12px 8px", flex:1 } },
+          nav.map((item, i) => item.section
+            ? h("div", { key:i, style: { padding:"12px 12px 6px", fontSize:10, fontWeight:600, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:1.2 } }, item.section)
+            : h("div", { key:item.id, onClick:()=>setPage(item.id), style: { padding:"8px 12px", borderRadius:6, cursor:"pointer", fontSize:13, marginBottom:1, color:page===item.id?"#fff":"rgba(255,255,255,0.5)", fontWeight:page===item.id?600:400, background:page===item.id?"#2d2d55":"transparent", display:"flex", alignItems:"center", gap:10 } },
+              h("span", { style:{fontSize:16,width:20,textAlign:"center"} }, item.icon), h("span", null, item.name)))),
+        h("div", { style: { padding:"12px 16px", borderTop:"1px solid rgba(255,255,255,0.08)", fontSize:12 } },
+          h("div", { style: { display:"flex", alignItems:"center", gap:6, color: health?.status==="ok"?"#4ade80":"#f87171" } },
+            h("span", { style: { width:6, height:6, borderRadius:"50%", background:"currentColor" } }), health?.status==="ok"?"All systems operational":"Checking...")));
+
+      const loading = h("div", { style: { textAlign:"center", padding:60, color:"#9ca3af" } }, "Loading...");
+
+      let content;
+      if (!data) { content = loading; }
+      else if (page === "dashboard") {
+        const ep = data.endpoints || {};
+        content = h("div", null,
+          h("div", { style: { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 } },
+            ...[["Endpoints", ep.total||0, "#2563eb"],["Compliant", ep.compliant||0, "#16a34a"],["Non-compliant", ep.non_compliant||0, "#dc2626"],["Reject %", (data.auth?.reject_rate||0)+"%", "#ca8a04"]].map(([l,v,c]) =>
+              h("div", { key:l, style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:20 } },
+                h("div", { style:{fontSize:12,color:"#6b7280",marginBottom:4} }, l), h("div", { style:{fontSize:28,fontWeight:700,color:c} }, v)))),
+          h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+            h("div", { style: { padding:"14px 20px", borderBottom:"1px solid #f3f4f6", fontWeight:600, fontSize:14 } }, "Recent authentications"),
+            h("table", { style: { width:"100%", borderCollapse:"collapse" } },
+              h("thead", null, h("tr", null, ...["Time","User","Result","MAC"].map(t => h("th", { key:t, style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"} }, t)))),
+              h("tbody", null, (data.recent_auth||[]).map((a,i) => h("tr", { key:i },
+                h("td", { style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"} }, (a.time||"").slice(11,19)),
+                h("td", { style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"} }, a.username),
+                h("td", { style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"} }, Badge({children:a.result==="Access-Accept"?"Accept":"Reject",color:a.result==="Access-Accept"?"green":"red",small:true})),
+                h("td", { style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace",color:"#9ca3af"} }, a.mac||"—")))))));
+      }
+      else if (page === "endpoints") {
+        content = h("div", null,
+          h("input", { value:search, onChange:e=>setSearch(e.target.value), placeholder:"Search...", style:{width:"100%",padding:"8px 14px",borderRadius:6,border:"1px solid #e5e7eb",fontSize:13,marginBottom:16,outline:"none"} }),
+          h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+            h("table", { style:{width:"100%",borderCollapse:"collapse"} },
+              h("thead", null, h("tr", null, ...["MAC","IP","User","Profile","Posture"].map(t=>h("th",{key:t,style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"}},t)))),
+              h("tbody", null, (data.items||[]).map((e,i)=>h("tr",{key:i},
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},e.mac_address),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},e.ip_address||"—"),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},e.username||"—"),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},e.device_profile||"Unknown"),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},Badge({children:e.posture_status||"unknown",color:e.posture_status==="compliant"?"green":e.posture_status==="non_compliant"?"red":"gray",small:true})))))),
+            h("div",{style:{padding:"10px 16px",fontSize:12,color:"#9ca3af",borderTop:"1px solid #e5e7eb"}},(data.total||0)+" endpoints")));
+      }
+      else if (page === "policies") {
+        content = h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+          h("table", { style:{width:"100%",borderCollapse:"collapse"} },
+            h("thead", null, h("tr", null, ...["Pri","Name","Set","Conditions","Actions","Hits"].map(t=>h("th",{key:t,style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"}},t)))),
+            h("tbody", null, (data.items||[]).map((p,i)=>h("tr",{key:i},
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},p.priority),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontWeight:500}},p.name),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},p.policy_set),
+              h("td",{style:{padding:"9px 16px",fontSize:12,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace",color:"#6b7280"}},JSON.stringify(p.conditions).slice(0,35)),
+              h("td",{style:{padding:"9px 16px",fontSize:12,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace",color:"#2563eb"}},JSON.stringify(p.actions).slice(0,30)),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace",color:"#9ca3af"}},(p.hit_count||0).toLocaleString()))))));
+      }
+      else if (page === "authlog") {
+        content = h("div", null,
+          h("input", { value:search, onChange:e=>setSearch(e.target.value), placeholder:"Search...", style:{width:"100%",padding:"8px 14px",borderRadius:6,border:"1px solid #e5e7eb",fontSize:13,marginBottom:16,outline:"none"} }),
+          h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+            h("table", { style:{width:"100%",borderCollapse:"collapse"} },
+              h("thead", null, h("tr", null, ...["Time","User","Result","MAC","NAS"].map(t=>h("th",{key:t,style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"}},t)))),
+              h("tbody", null, (data.items||[]).map((a,i)=>h("tr",{key:i,style:{background:a.result==="Access-Reject"?"rgba(220,38,38,0.03)":"transparent"}},
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},(a.timestamp||"").replace("T"," ").slice(0,19)),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},a.username),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},Badge({children:a.result==="Access-Accept"?"Accept":"Reject",color:a.result==="Access-Accept"?"green":"red",small:true})),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},a.mac||"—"),
+                h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace",color:"#9ca3af"}},a.nas_ip||"—")))))));
+      }
+      else if (page === "nas") {
+        content = h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+          h("table", { style:{width:"100%",borderCollapse:"collapse"} },
+            h("thead", null, h("tr", null, ...["IP","Name","Type","Secret","Description"].map(t=>h("th",{key:t,style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"}},t)))),
+            h("tbody", null, (data.items||[]).map((d,i)=>h("tr",{key:i},
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},d.nasname),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontWeight:500}},d.shortname),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},d.type),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},d.secret),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",color:"#9ca3af"}},d.description||"—"))))));
+      }
+      else if (page === "guests") {
+        content = h("div", { style: { background:"#fff", borderRadius:8, border:"1px solid #e5e7eb" } },
+          h("table", { style:{width:"100%",borderCollapse:"collapse"} },
+            h("thead", null, h("tr", null, ...["Username","Email","Sponsor","Status","Valid until"].map(t=>h("th",{key:t,style:{padding:"8px 16px",textAlign:"left",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",borderBottom:"1px solid #e5e7eb"}},t)))),
+            h("tbody", null, (data.items||[]).map((g,i)=>h("tr",{key:i},
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",fontFamily:"monospace"}},g.username),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},g.email||"—"),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},g.sponsor||"—"),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6"}},Badge({children:g.status||"unknown",color:g.status==="active"?"green":"gray",small:true})),
+              h("td",{style:{padding:"9px 16px",fontSize:13,borderBottom:"1px solid #f3f4f6",color:"#9ca3af"}},g.valid_until?new Date(g.valid_until).toLocaleString():"—"))))));
+      }
+
+      return h("div", { style: { display:"flex", height:"100vh", background:"#f8f9fa", fontFamily:"'DM Sans',-apple-system,sans-serif", color:"#111827", fontSize:14 } },
+        h("link", { href:"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap", rel:"stylesheet" }),
+        sidebar,
+        h("main", { style: { flex:1, overflow:"auto" } },
+          h("div", { style: { borderBottom:"1px solid #e5e7eb", background:"#fff", padding:"20px 32px" } },
+            h("h1", { style: { fontSize:20, fontWeight:700, margin:0 } }, title),
+            h("p", { style: { fontSize:13, color:"#6b7280", margin:"4px 0 0" } }, sub)),
+          h("div", { style: { padding:"24px 32px" } }, content)));
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>
