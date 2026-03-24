@@ -431,6 +431,7 @@ services:
     environment:
       <<: *common-env
       FINGERBANK_API_KEY: ${FINGERBANK_API_KEY:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme_redis_pwd}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8000:8000"
