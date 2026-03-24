@@ -1,146 +1,29 @@
-###############################################################################
-#  Open NAC — FreeRADIUS LDAP Module (Active Directory)
-#  Эквивалент: Cisco ISE External Identity Source → Active Directory
-#
-#  Функции:
-#    1. Аутентификация через LDAP bind (TTLS-PAP)
-#    2. Получение group membership для авторизации
-#    3. Маппинг AD-групп → RADIUS-группы (VLAN)
-#    4. Извлечение атрибутов пользователя (department, title)
-#
-#  Для PEAP-MSCHAPv2: LDAP не используется для аутентификации
-#    (нужен NTLM hash → используется mschap + winbind)
-#    Но LDAP используется для получения групп в post-auth
-#
-#  Multi-domain: создайте отдельные LDAP instances
-#    ldap corp { ... }
-#    ldap partner { ... }
-#    и вызывайте нужный в зависимости от realm
-###############################################################################
-
 ldap {
-	#--- Подключение к AD DC ---
-	server = "${AD_SERVER:-dc1.corp.local}"
-	port = 636
-	
-	#--- LDAPS (рекомендуется) или STARTTLS ---
-	tls {
-		start_tls = no
-		require_cert = "demand"
-		ca_file = "/etc/raddb/certs/ad-ca.pem"
-		# certificate_file =
-		# private_key_file =
-		tls_min_version = "1.2"
-	}
-
-	#--- Service account для LDAP queries ---
-	identity = "${AD_BIND_DN:-CN=svc-radius,OU=Service Accounts,DC=corp,DC=local}"
-	password = "${AD_BIND_PASSWORD:-changeme_ad_pwd}"
-
-	#--- Base DN для поиска пользователей ---
-	base_dn = "${AD_BASE_DN:-DC=corp,DC=local}"
-
-	#--- SASL bind (альтернатива simple bind) ---
-	# sasl {
-	#     mech = GSSAPI
-	#     realm = CORP.LOCAL
-	# }
-
-	#==================================================================
-	#  Поиск пользователя
-	#==================================================================
-
-	user {
-		#--- Где искать ---
-		base_dn = "${..base_dn}"
-		
-		#--- Фильтр поиска ---
-		#  sAMAccountName — стандартное поле логина в AD
-		#  userPrincipalName — для user@domain формата
-		filter = "(|(sAMAccountName=%{%{Stripped-User-Name}:-%{User-Name}})(userPrincipalName=%{%{Stripped-User-Name}:-%{User-Name}}@*))"
-
-		scope = "sub"
-
-		#--- Извлекаемые атрибуты ---
-		#  Маппинг AD-атрибутов → RADIUS control/request атрибуты
-		#  Это позволяет использовать AD-данные в unlang-правилах
-
-		access_attribute = "userAccountControl"
-		# Бит 0x2 = disabled аккаунт
-		access_positive = no
-	}
-
-	#==================================================================
-	#  Группы пользователя
-	#==================================================================
-
-	group {
-		base_dn = "${..base_dn}"
-
-		#--- Поиск групп, в которых состоит пользователь ---
-		filter = "(objectClass=group)"
-		scope = "sub"
-
-		#--- Атрибут членства ---
-		membership_attribute = "memberOf"
-
-		#--- Как маппить AD-группы на RADIUS-группы ---
-		#  Можно использовать CN группы напрямую или через маппинг
-		name_attribute = "cn"
-
-		#--- Кэширование групп ---
-		cacheable_name = yes
-		cacheable_dn = yes
-		cache_attribute = "LDAP-Group"
-	}
-
-	#==================================================================
-	#  Connection pool
-	#==================================================================
-
-	pool {
-		start = 5
-		min = 3
-		max = 32
-		spare = 5
-		uses = 0
-		retry_delay = 30
-		lifetime = 0
-		idle_timeout = 60
-		connect_timeout = 3.0
-	}
-
-	#==================================================================
-	#  Маппинг AD-атрибутов → RADIUS
-	#==================================================================
-
-	update {
-		#--- Control attributes (для авторизации) ---
-		control.Password-With-Header	+= 'userPassword'
-		control.NT-Password		:= 'ntPassword'
-
-		#--- Request attributes (для unlang rules) ---
-		request.LDAP-UserDN		:= 'dn'
-		request.LDAP-Group		+= 'memberOf'
-
-		#--- Дополнительные атрибуты для policy-engine ---
-		request.X-AD-Department		:= 'department'
-		request.X-AD-Title		:= 'title'
-		request.X-AD-Mail		:= 'mail'
-		request.X-AD-EmployeeID	:= 'employeeID'
-		request.X-AD-AccountControl	:= 'userAccountControl'
-	}
-
-	#==================================================================
-	#  Опции
-	#==================================================================
-
-	options {
-		chase_referrals = yes
-		rebind = yes
-		res_timeout = 10
-		srv_timelimit = 3
-		net_timeout = 1
-		ldap_debug = 0x0000
-	}
+    server = "localhost"
+    port = 389
+    base_dn = "dc=corp,dc=local"
+    identity = "cn=admin,dc=corp,dc=local"
+    password = "changeme"
+    user {
+        base_dn = "${..base_dn}"
+        filter = "(sAMAccountName=%{Stripped-User-Name})"
+    }
+    group {
+        base_dn = "${..base_dn}"
+        filter = "(objectClass=group)"
+        membership_attribute = "memberOf"
+    }
+    pool {
+        start = 0
+        min = 0
+        max = 10
+        spare = 3
+    }
+    options {
+        chase_referrals = yes
+        rebind = yes
+        res_timeout = 10
+        srv_timelimit = 3
+        net_timeout = 1
+    }
 }

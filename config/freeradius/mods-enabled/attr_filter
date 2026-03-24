@@ -1,0 +1,12 @@
+attr_filter attr_filter.access_reject {
+    key = "%{User-Name}"
+    filename = /etc/freeradius/mods-config/attr_filter/access_reject
+}
+attr_filter attr_filter.pre-proxy {
+    key = "%{Realm}"
+    filename = /etc/freeradius/mods-config/attr_filter/pre-proxy
+}
+attr_filter attr_filter.post-proxy {
+    key = "%{Realm}"
+    filename = /etc/freeradius/mods-config/attr_filter/post-proxy
+}

@@ -1,167 +1,38 @@
-###############################################################################
-#  Open NAC — FreeRADIUS EAP Module
-#  Эквивалент: Cisco ISE Allowed Protocols (EAP configuration)
-#
-#  Поддерживаемые методы (в порядке приоритета):
-#    1. EAP-TLS     — сертификат клиента (наиболее безопасный)
-#    2. PEAP        — TLS-туннель + MSCHAPv2/GTC внутри
-#    3. EAP-TTLS    — TLS-туннель + PAP/MSCHAPv2 внутри
-#
-#  Для BYOD:  EAP-TLS (после выдачи сертификата через SCEP/EST)
-#  Для AD:    PEAP-MSCHAPv2 (стандарт Windows supplicant)
-#  Для Linux: EAP-TTLS-PAP (через wpa_supplicant)
-#  Для IoT:   MAB (не EAP, обрабатывается в default server)
-###############################################################################
-
 eap {
-	#--- Общие параметры ---
-	default_eap_type = peap
-	timer_expire = 60
-	ignore_unknown_eap_types = no
-	cisco_accounting_username_bug = no
-	max_sessions = ${thread[pool].max_servers}
-
-	#==================================================================
-	#  EAP-TLS — аутентификация по клиентскому сертификату
-	#  Самый безопасный метод, используется для:
-	#    - Управляемые рабочие станции (cert через GPO/MDM)
-	#    - BYOD после онбординга (cert через SCEP/EST → EJBCA)
-	#    - Машинная аутентификация (computer certificate)
-	#==================================================================
-
-	tls-config tls-common {
-		#--- Серверный сертификат ---
-		private_key_password =
-		private_key_file = ${certdir}/server.key
-		certificate_file = ${certdir}/server.pem
-
-		#--- CA цепочка для валидации клиентских сертификатов ---
-		ca_file = ${certdir}/ca.pem
-
-		#--- CRL (Certificate Revocation List) ---
-		#  Раскомментировать при наличии CRL-файла или OCSP
-		# check_crl = yes
-		# ca_path = ${certdir}/crl
-
-		#--- OCSP (Online Certificate Status Protocol) ---
-		#  Рекомендуется для production (проверка отзыва в реальном времени)
-		ocsp {
-			enable = no
-			override_cert_url = no
-			# url = "http://ejbca:8080/ejbca/publicweb/status/ocsp"
-			use_nonce = yes
-			timeout = 5
-			softfail = yes
-		}
-
-		#--- TLS параметры ---
-		tls_min_version = "1.2"
-		tls_max_version = "1.3"
-
-		#--- Cipher suite (безопасные, без RC4/3DES) ---
-		cipher_list = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
-
-		cipher_server_preference = yes
-
-		#--- DH parameters ---
-		dh_file = ${certdir}/dh
-
-		#--- Session cache (ускоряет re-auth) ---
-		cache {
-			enable = yes
-			lifetime = 24
-			max_entries = 4096
-			persist_dir = "${db_dir}/tlscache"
-		}
-
-		#--- Верификация клиентского сертификата ---
-		verify {
-			# Если нужно проверять CN/SAN клиента
-			# tmpdir = /tmp/radiusd
-			# client = "/path/to/verify-script %{TLS-Client-Cert-Filename}"
-		}
-
-		ecdh_curve = "prime256v1"
-	}
-
-	#--- EAP-TLS instance ---
-	tls {
-		tls = tls-common
-
-		#--- Какое поле сертификата использовать как username ---
-		#  Common для machine auth: CN (hostname)
-		#  Common для user auth: SAN:email или SAN:UPN
-		virtual_server = default
-	}
-
-	#==================================================================
-	#  PEAP — Protected EAP
-	#  Стандарт для Windows: внешний TLS + внутренний MSCHAPv2
-	#  Эквивалент: ISE PEAP with inner MSCHAPv2
-	#==================================================================
-
-	peap {
-		tls = tls-common
-		default_eap_type = mschapv2
-		copy_request_to_tunnel = yes
-		use_tunneled_reply = yes
-
-		#--- Virtual server для inner аутентификации ---
-		virtual_server = inner-tunnel
-
-		#--- SoH (Statement of Health) — для Windows NAP ---
-		#  Deprecated, используем osquery/Fleet вместо NAP
-		soh = no
-	}
-
-	#==================================================================
-	#  EAP-TTLS — Tunneled TLS
-	#  Для Linux (wpa_supplicant) и cross-platform
-	#  Позволяет PAP внутри (LDAP bind) или MSCHAPv2
-	#==================================================================
-
-	ttls {
-		tls = tls-common
-		default_eap_type = mschapv2
-		copy_request_to_tunnel = yes
-		use_tunneled_reply = yes
-		virtual_server = inner-tunnel
-	}
-
-	#==================================================================
-	#  MSCHAPv2 (inner method для PEAP и TTLS)
-	#==================================================================
-
-	mschapv2 {
-		send_error = no
-		identity = "Open NAC"
-	}
-
-	#==================================================================
-	#  GTC (inner method — для OTP/token аутентификации)
-	#==================================================================
-
-	gtc {
-		challenge = "Password: "
-		auth_type = PAP
-	}
-}
-
-#==================================================================
-#  Inner EAP (для inner-tunnel virtual server)
-#  Обрабатывает Phase 2 EAP внутри PEAP/TTLS
-#==================================================================
-
-eap inner-eap {
-	default_eap_type = mschapv2
-	timer_expire = 60
-
-	mschapv2 {
-		send_error = no
-	}
-
-	gtc {
-		challenge = "Password: "
-		auth_type = PAP
-	}
+    default_eap_type = peap
+    timer_expire = 60
+    ignore_unknown_eap_types = no
+    max_sessions = 64
+    tls-config tls-common {
+        private_key_file = ${certdir}/server.key
+        certificate_file = ${certdir}/server.pem
+        ca_file = ${certdir}/ca.pem
+        dh_file = ${certdir}/dh
+        tls_min_version = "1.2"
+        cipher_list = "DEFAULT"
+        cache {
+            enable = yes
+            lifetime = 24
+            max_entries = 255
+        }
+    }
+    tls {
+        tls = tls-common
+    }
+    peap {
+        tls = tls-common
+        default_eap_type = mschapv2
+        copy_request_to_tunnel = yes
+        use_tunneled_reply = yes
+        virtual_server = default
+    }
+    ttls {
+        tls = tls-common
+        default_eap_type = mschapv2
+        copy_request_to_tunnel = yes
+        use_tunneled_reply = yes
+        virtual_server = default
+    }
+    mschapv2 {
+    }
 }

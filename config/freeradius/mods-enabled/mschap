@@ -1,53 +1,6 @@
-###############################################################################
-#  Open NAC — FreeRADIUS MS-CHAP Module
-#  Эквивалент: Cisco ISE PEAP-MSCHAPv2 → Active Directory
-#
-#  MS-CHAPv2 требует NT-hash пароля. Два подхода:
-#    1. ntlm_auth (fork external process) — совместимость
-#    2. winbind (libwbclient API)        — ~2x быстрее, рекомендуется
-#
-#  Предварительные требования:
-#    - Samba 4 joined к AD домену (net ads join)
-#    - winbindd запущен и доступен через socket
-#    - /var/lib/samba/winbindd_privileged доступен FreeRADIUS
-#
-#  Альтернатива (PacketFence v13.1+):
-#    Встроенный NTLM-аутентификатор без Samba
-###############################################################################
-
 mschap {
-	#--- Использовать winbind (рекомендуется для производительности) ---
-	use_mppe = yes
-	require_encryption = yes
-	require_strong = yes
-	with_ntdomain_hack = yes
-
-	#--- ntlm_auth: внешний процесс (fallback) ---
-	#  Раскомментировать если winbind нестабилен
-	ntlm_auth = "/usr/bin/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --domain=%{%{mschap:NT-Domain}:-CORP} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
-
-	#--- winbind: прямой API-вызов (быстрее) ---
-	#  Требует: rlm_mschap скомпилирован с libwbclient
-	# winbind_username = "%{%{mschap:User-Name}:-%{User-Name}}"
-	# winbind_domain = "${AD_DOMAIN:-CORP}"
-
-	#--- Retry и timeout ---
-	pool {
-		start = 5
-		min = 3
-		max = 20
-		spare = 3
-		uses = 0
-		retry_delay = 10
-		lifetime = 86400
-		idle_timeout = 600
-	}
-
-	#--- Passchange (смена пароля через RADIUS) ---
-	passchange {
-		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
-		ntlm_auth_username = "username: %{%{mschap:User-Name}:-%{User-Name}}"
-		ntlm_auth_domain = "nt-domain: %{%{mschap:NT-Domain}:-CORP}"
-		local_cpw = "/usr/bin/smbpasswd -s %{mschap:User-Name}"
-	}
+    use_mppe = yes
+    require_encryption = yes
+    require_strong = yes
+    with_ntdomain_hack = yes
 }

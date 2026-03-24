@@ -1,81 +1,75 @@
 """
-Open NAC — Policy Engine (FastAPI)
-Центральный сервис: авторизация, профилирование, события, Admin API.
+Open NAC — Profiler Service
+Эквивалент: Cisco ISE Profiler + Fingerbank
+
+Kafka consumer, который:
+  1. Читает события из nac.profiler.raw и nac.endpoint.profiles
+  2. Анализирует DHCP fingerprint, User-Agent, MAC OUI через Fingerbank API
+  3. Опционально запускает p0f (passive OS fingerprint) и nmap (active scan)
+  4. Вычисляет composite confidence score
+  5. Обновляет device_profile в MariaDB
+  6. При смене профиля → отправляет CoA через Policy Engine API
+
+Запуск: python -m app.main
 """
 
 import os
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+import signal
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-from app.core.database import engine, Base
-from app.core.redis_client import redis_pool
-from app.core.kafka_producer import kafka_producer
-from app.api import (
-    authorize,
-    endpoints,
-    policies,
-    profiling,
-    events,
-    network_devices,
-    guest_accounts,
-    dashboard,
-    coa,
-    auth_log,
-)
+from app.consumers.kafka_consumer import ProfileConsumer
+from app.engines.scoring import ScoringEngine
+from app.engines.fingerbank_engine import FingerbankEngine
+from app.engines.mac_oui_engine import MACOUIEngine
+from app.engines.useragent_engine import UserAgentEngine
 
 logging.basicConfig(
     level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper()),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("nac.main")
+logger = logging.getLogger("nac.profiler")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting Open NAC Policy Engine...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await kafka_producer.start()
-    await redis_pool.initialize()
-    logger.info("Policy Engine ready on :8000")
-    yield
-    await kafka_producer.stop()
-    await redis_pool.close()
-    await engine.dispose()
+async def main():
+    logger.info("Starting Open NAC Profiler Service...")
+
+    # Инициализируем движки профилирования
+    fingerbank = FingerbankEngine(api_key=os.getenv("FINGERBANK_API_KEY", ""))
+    mac_oui = MACOUIEngine()
+    useragent = UserAgentEngine()
+
+    scoring = ScoringEngine(
+        engines={
+            "fingerbank": (fingerbank, 0.40),   # вес 40%
+            "mac_oui": (mac_oui, 0.15),         # вес 15%
+            "useragent": (useragent, 0.20),      # вес 20%
+            # p0f и nmap добавляются опционально
+        }
+    )
+
+    # Запускаем Kafka consumer
+    consumer = ProfileConsumer(scoring_engine=scoring)
+
+    # Graceful shutdown
+    loop = asyncio.get_event_loop()
+    stop_event = asyncio.Event()
+
+    def shutdown():
+        logger.info("Shutting down profiler...")
+        stop_event.set()
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, shutdown)
+
+    try:
+        await consumer.start()
+        logger.info("Profiler ready — consuming from Kafka")
+        await stop_event.wait()
+    finally:
+        await consumer.stop()
+        logger.info("Profiler stopped")
 
 
-app = FastAPI(
-    title="Open NAC Policy Engine",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# RADIUS-facing (FreeRADIUS rlm_rest вызывает эти endpoints)
-app.include_router(authorize.router, prefix="/api/v1", tags=["RADIUS"])
-app.include_router(profiling.router, prefix="/api/v1", tags=["RADIUS"])
-app.include_router(events.router, prefix="/api/v1", tags=["RADIUS"])
-
-# Admin UI
-app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
-app.include_router(endpoints.router, prefix="/api/v1", tags=["Endpoints"])
-app.include_router(policies.router, prefix="/api/v1", tags=["Policies"])
-app.include_router(network_devices.router, prefix="/api/v1", tags=["NAS"])
-app.include_router(guest_accounts.router, prefix="/api/v1", tags=["Guest"])
-app.include_router(coa.router, prefix="/api/v1", tags=["CoA"])
-app.include_router(auth_log.router, prefix="/api/v1", tags=["Logs"])
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "policy-engine"}
+if __name__ == "__main__":
+    asyncio.run(main())
