@@ -435,6 +435,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8000:8000"
+    volumes:
+      - ./config/freeradius/certs:/app/certs:rw
     networks:
       nac-core:
         ipv4_address: 172.30.0.20

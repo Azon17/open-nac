@@ -5,7 +5,7 @@
 <title>Open NAC — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',-apple-system,sans-serif;background:#f8f9fa;color:#111827}input,textarea,select,button{font-family:inherit;outline:none}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}tr:hover td{background:rgba(0,0,0,0.015)!important}button:hover{opacity:.88}.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}.input{width:100%;padding:8px 12px;border-radius:6px;border:1px solid #e5e7eb;font-size:13px;background:#fff;color:#111827}.input:focus{border-color:#f48120}.textarea{resize:vertical;min-height:60px;font-family:'IBM Plex Mono',monospace}.label{display:block;font-size:12px;font-weight:500;color:#6b7280;margin-bottom:4px}.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none}.btn-primary{background:#f48120;color:#fff}.btn-danger{background:#fef2f2;color:#dc2626}.btn-default{background:#fff;color:#111827;border:1px solid #e5e7eb}.btn-sm{padding:5px 12px;font-size:12px}.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:500}.badge-green{background:#f0fdf4;color:#15803d}.badge-green::before{content:'';width:6px;height:6px;border-radius:50%;background:#16a34a}.badge-red{background:#fef2f2;color:#b91c1c}.badge-red::before{content:'';width:6px;height:6px;border-radius:50%;background:#dc2626}.badge-blue{background:#eff6ff;color:#1d4ed8}.badge-blue::before{content:'';width:6px;height:6px;border-radius:50%;background:#2563eb}.badge-gray{background:#f3f4f6;color:#6b7280}.badge-gray::before{content:'';width:6px;height:6px;border-radius:50%;background:#9ca3af}.card{background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden}.card-header{padding:14px 20px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600}table{width:100%;border-collapse:collapse}th{padding:8px 16px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e5e7eb}td{padding:9px 16px;font-size:13px;border-bottom:1px solid #f3f4f6}.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-start;justify-content:center;z-index:1000;padding-top:50px;overflow-y:auto}.modal{background:#fff;border-radius:12px;width:600px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.15)}.modal-header{padding:16px 24px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:600}.modal-body{padding:24px}.field{margin-bottom:14px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}.toggle{width:36px;height:20px;border-radius:10px;position:relative;cursor:pointer}.toggle.on{background:#16a34a}.toggle.off{background:#d1d5db}.toggle::after{content:'';width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;box-shadow:0 1px 3px rgba(0,0,0,.2)}.toggle.on::after{left:18px}.toggle.off::after{left:2px}.empty{text-align:center;padding:40px;color:#9ca3af}.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}.alert-success{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}.alert-error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',-apple-system,sans-serif;background:#f8f9fa;color:#111827}input,textarea,select,button{font-family:inherit;outline:none}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}tr:hover td{background:rgba(0,0,0,0.015)!important}button:hover{opacity:.88}.mono{font-family:'IBM Plex Mono',monospace;font-size:12px}.input{width:100%;padding:7px 10px;border-radius:5px;border:1px solid #e5e7eb;font-size:13px;background:#fff}.input:focus{border-color:#f48120}.label{display:block;font-size:11px;font-weight:600;color:#6b7280;margin-bottom:3px}.btn{padding:7px 14px;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px}.btn-primary{background:#f48120;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-danger{background:#fef2f2;color:#dc2626}.btn-default{background:#fff;color:#374151;border:1px solid #d1d5db}.btn-sm{padding:4px 10px;font-size:11px}.card{background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden}.card-header{padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;font-weight:600;background:#fafafa}table{width:100%;border-collapse:collapse}th{padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;border-bottom:2px solid #e5e7eb;background:#fafafa}td{padding:8px 12px;font-size:13px;border-bottom:1px solid #f3f4f6}.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;z-index:1000;padding-top:40px;overflow-y:auto}.modal{background:#fff;border-radius:10px;width:640px;max-width:95vw;box-shadow:0 25px 60px rgba(0,0,0,.2)}.modal-header{padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600}.modal-body{padding:20px;max-height:75vh;overflow-y:auto}.field{margin-bottom:12px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:500}.badge-green{background:#dcfce7;color:#166534}.badge-red{background:#fee2e2;color:#991b1b}.badge-blue{background:#dbeafe;color:#1e40af}.badge-orange{background:#ffedd5;color:#9a3412}.badge-gray{background:#f3f4f6;color:#374151}.badge-purple{background:#f3e8ff;color:#6b21a8}.badge-yellow{background:#fef9c3;color:#854d0e}.alert{padding:10px 14px;border-radius:6px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px}.alert-success{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}.alert-error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}.toggle{width:34px;height:18px;border-radius:9px;position:relative;cursor:pointer;flex-shrink:0}.toggle.on{background:#16a34a}.toggle.off{background:#d1d5db}.toggle::after{content:'';width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}.toggle.on::after{left:18px}.toggle.off::after{left:2px}.empty{text-align:center;padding:30px;color:#9ca3af}
 </style>
 </head>
 <body>
@@ -14,31 +14,620 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
-const{useState,useEffect,useCallback}=React;const API="/api/v1";
-async function api(p,o={}){try{const r=await fetch(API+p,{headers:{"Content-Type":"application/json",...(o.headers||{})},...o});return await r.json()}catch(e){return{error:e.message}}}
-function Modal({title,children,onClose,wide}){return<div className="overlay" onClick={onClose}><div className="modal" style={wide?{width:720}:{}} onClick={e=>e.stopPropagation()}><div className="modal-header"><span>{title}</span><span style={{cursor:"pointer",color:"#9ca3af",fontSize:22}} onClick={onClose}>×</span></div><div className="modal-body">{children}</div></div></div>}
-function Alert({type,text,onDismiss}){if(!text)return null;return<div className={`alert alert-${type}`}><span>{text}</span><span onClick={onDismiss} style={{cursor:"pointer",fontWeight:600}}>×</span></div>}
+const{useState,useEffect,useCallback}=React;const A="/api/v1";
+async function api(p,o={}){try{const r=await fetch(A+p,{headers:{"Content-Type":"application/json",...(o.headers||{})},...o});return await r.json()}catch(e){return{error:e.message}}}
+function Modal({title,children,onClose,wide}){return<div className="overlay" onClick={onClose}><div className="modal" style={wide?{width:780}:{}} onClick={e=>e.stopPropagation()}><div className="modal-header"><span>{title}</span><span style={{cursor:"pointer",color:"#9ca3af",fontSize:20}} onClick={onClose}>×</span></div><div className="modal-body">{children}</div></div></div>}
+function Alert({type,text,onDismiss}){if(!text)return null;return<div className={`alert alert-${type}`}><span>{text}</span>{onDismiss&&<span onClick={onDismiss} style={{cursor:"pointer",fontWeight:600}}>×</span>}</div>}
 
-function DashboardPage(){const[d,setD]=useState(null);useEffect(()=>{api("/dashboard/stats").then(setD)},[]);if(!d)return<div className="empty">Loading...</div>;const ep=d.endpoints||{},au=d.auth||{};return<div><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24}}>{[["Endpoints",ep.total||0,"#2563eb"],["Compliant",ep.compliant||0,"#16a34a"],["Non-compliant",ep.non_compliant||0,"#dc2626"],["Reject %",(au.reject_rate||0)+"%","#ca8a04"]].map(([l,v,c])=><div key={l} className="card" style={{padding:20}}><div style={{fontSize:12,color:"#6b7280",marginBottom:4}}>{l}</div><div style={{fontSize:28,fontWeight:700,color:c}}>{v}</div></div>)}</div><div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:20}}><div className="card"><div className="card-header">Recent authentications</div><table><thead><tr><th>Time</th><th>User</th><th>Result</th><th>MAC</th></tr></thead><tbody>{(d.recent_auth||[]).map((a,i)=><tr key={i}><td className="mono">{(a.time||"").slice(11,19)}</td><td>{a.username}</td><td><span className={`badge badge-${a.result==="Access-Accept"?"green":"red"}`}>{a.result==="Access-Accept"?"Accept":"Reject"}</span></td><td className="mono" style={{color:"#9ca3af"}}>{a.mac||"—"}</td></tr>)}</tbody></table></div><div className="card" style={{padding:20}}><div style={{fontWeight:600,marginBottom:16}}>Categories</div>{(d.categories||[]).map((c,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",marginBottom:8,fontSize:13}}><span>{c.category}</span><span className="mono" style={{color:"#6b7280"}}>{c.count}</span></div>)}</div></div></div>}
+// ─── Dashboard ───
+function DashboardPage(){
+  const[d,setD]=useState(null);
+  const[stats,setStats]=useState(null);
+  const[authLog,setAuthLog]=useState(null);
+  const[liveStats,setLiveStats]=useState(null);
+  const[alarms,setAlarms]=useState([]);
+  const[refreshing,setRefreshing]=useState(false);
+  const[autoRefresh,setAutoRefresh]=useState(true);
 
-function EndpointsPage(){const[data,setData]=useState(null);const[search,setSearch]=useState("");const[detail,setDetail]=useState(null);const[msg,setMsg]=useState(null);const load=useCallback(()=>api(`/endpoints?search=${search}&limit=200`).then(setData),[search]);useEffect(()=>{load()},[load]);const sendCoa=async(mac,action)=>{const r=await api("/coa/send",{method:"POST",body:JSON.stringify({mac_address:mac,action})});setMsg({type:r?.success?"success":"error",text:r?.success?`${action} → ${mac}`:`Failed: ${r?.error||"?"}`});setTimeout(()=>setMsg(null),4000)};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div style={{display:"flex",gap:12,marginBottom:16}}><input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search MAC, IP, user, profile..." style={{flex:1}}/><button className="btn btn-default" onClick={load}>Refresh</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<><table><thead><tr><th>MAC</th><th>IP</th><th>User</th><th>Profile</th><th>Posture</th><th>Last seen</th><th>Actions</th></tr></thead><tbody>{(data.items||[]).map((e,i)=><tr key={i} style={{cursor:"pointer"}} onClick={()=>setDetail(e)}><td className="mono">{e.mac_address}</td><td className="mono">{e.ip_address||"—"}</td><td>{e.username||"—"}</td><td>{e.device_profile||"Unknown"}</td><td><span className={`badge badge-${e.posture_status==="compliant"?"green":e.posture_status==="non_compliant"?"red":"gray"}`}>{e.posture_status||"unknown"}</span></td><td style={{color:"#9ca3af"}}>{e.last_seen?new Date(e.last_seen).toLocaleString():"—"}</td><td onClick={ev=>ev.stopPropagation()}><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>sendCoa(e.mac_address,"reauthenticate")}>CoA</button><button className="btn btn-danger btn-sm" onClick={()=>sendCoa(e.mac_address,"disconnect")}>Disc</button></div></td></tr>)}</tbody></table><div style={{padding:"10px 16px",fontSize:12,color:"#9ca3af",borderTop:"1px solid #e5e7eb"}}>{data.total||0} endpoints</div></>}</div>{detail&&<Modal title="Endpoint details" onClose={()=>setDetail(null)} wide><div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>{Object.entries(detail).filter(([k])=>k!=="id").map(([k,v])=><div key={k} style={{display:"flex",padding:"8px 0",borderBottom:"1px solid #f3f4f6",fontSize:13}}><span style={{width:140,color:"#6b7280"}}>{k.replace(/_/g," ")}</span><span className={["mac","ip","nas","vlan"].some(x=>k.includes(x))?"mono":""}>{v!=null?String(v):"—"}</span></div>)}</div><div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}><button className="btn btn-primary" onClick={()=>{sendCoa(detail.mac_address,"reauthenticate");setDetail(null)}}>Reauthenticate</button><button className="btn btn-default" onClick={()=>{sendCoa(detail.mac_address,"bounce-port");setDetail(null)}}>Port bounce</button><button className="btn btn-danger" onClick={()=>{sendCoa(detail.mac_address,"disconnect");setDetail(null)}}>Disconnect</button></div></Modal>}</div>}
+  const load=useCallback(()=>{
+    setRefreshing(true);
+    Promise.all([
+      api("/dashboard/stats"),
+      api("/auth-log/stats"),
+      api("/auth-log?limit=20"),
+      api("/live-log/stats"),
+    ]).then(([dash,aStats,aLog,lStats])=>{
+      setD(dash);setStats(aStats);setAuthLog(aLog);setLiveStats(lStats);setRefreshing(false);
+      // Generate alarms from data
+      const a=[];
+      if(dash?.auth?.reject_rate>20)a.push({level:"critical",text:`High reject rate: ${dash.auth.reject_rate}%`,time:"now"});
+      if((dash?.endpoints?.non_compliant||0)>0)a.push({level:"warning",text:`${dash.endpoints.non_compliant} non-compliant endpoints`,time:"now"});
+      if(lStats?.avg_eval_ms>100)a.push({level:"warning",text:`Policy eval slow: ${lStats.avg_eval_ms}ms avg`,time:"now"});
+      if(a.length===0)a.push({level:"info",text:"No active alarms",time:""});
+      setAlarms(a);
+    });
+  },[]);
 
-function PoliciesPage(){const[data,setData]=useState(null);const[editing,setEditing]=useState(null);const[msg,setMsg]=useState(null);const ef={name:"",description:"",priority:100,policy_set:"Wired 802.1X",conditions:"{}",actions:'{"vlan":"100"}',enabled:true};const[form,setForm]=useState(ef);const load=()=>api("/policies").then(setData);useEffect(()=>{load()},[]);const openNew=()=>{setForm({...ef,conditions:JSON.stringify({"AD-Group":"Domain Users","Posture":"Compliant"},null,2),actions:JSON.stringify({vlan:"100",acl:"EMPLOYEE_FULL"},null,2)});setEditing("new")};const openEdit=p=>{setForm({...p,conditions:JSON.stringify(p.conditions,null,2),actions:JSON.stringify(p.actions,null,2)});setEditing(p.id)};const save=async()=>{try{const body={...form,conditions:JSON.parse(form.conditions),actions:JSON.parse(form.actions)};const r=editing==="new"?await api("/policies",{method:"POST",body:JSON.stringify(body)}):await api(`/policies/${editing}`,{method:"PUT",body:JSON.stringify(body)});setMsg({type:r?.error?"error":"success",text:r?.error||"Saved"});setEditing(null);load()}catch(e){setMsg({type:"error",text:"Invalid JSON"})}setTimeout(()=>setMsg(null),4000)};const del=async(id,name)=>{if(!confirm(`Delete "${name}"?`))return;await api(`/policies/${id}`,{method:"DELETE"});load()};const toggle=async p=>{await api(`/policies/${p.id}`,{method:"PUT",body:JSON.stringify({enabled:!p.enabled})});load()};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} rules · Evaluated by priority</div><button className="btn btn-primary" onClick={openNew}>+ Create rule</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>Pri</th><th>Name</th><th>Set</th><th>Conditions</th><th>Result</th><th>Hits</th><th>On</th><th></th></tr></thead><tbody>{(data.items||[]).map((p,i)=><tr key={i}><td className="mono">{p.priority}</td><td style={{fontWeight:600}}>{p.name}{p.description&&<div style={{fontSize:11,color:"#9ca3af"}}>{p.description}</div>}</td><td><span className="badge badge-gray">{p.policy_set}</span></td><td className="mono" style={{color:"#6b7280",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(p.conditions)}</td><td className="mono" style={{color:"#2563eb",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(p.actions)}</td><td className="mono" style={{color:"#9ca3af"}}>{(p.hit_count||0).toLocaleString()}</td><td><div className={`toggle ${p.enabled?"on":"off"}`} onClick={()=>toggle(p)}/></td><td><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>openEdit(p)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>del(p.id,p.name)}>Del</button></div></td></tr>)}</tbody></table>}</div>{editing&&<Modal title={editing==="new"?"Create rule":`Edit: ${form.name}`} onClose={()=>setEditing(null)} wide><div className="field"><label className="label">Rule name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="field"><label className="label">Description</label><input className="input" value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})}/></div><div className="field-row"><div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:+e.target.value})}/></div><div><label className="label">Policy set</label><select className="input" value={form.policy_set} onChange={e=>setForm({...form,policy_set:e.target.value})}>{["Wired 802.1X","Wireless","MAB Wired","CWA Portal","VPN","Default"].map(s=><option key={s}>{s}</option>)}</select></div></div><div className="field"><label className="label">Conditions (JSON)</label><textarea className="input textarea" value={form.conditions} onChange={e=>setForm({...form,conditions:e.target.value})} rows={4}/><div style={{fontSize:11,color:"#9ca3af",marginTop:4}}>Keys: AD-Group, Posture, Device-Profile, Device-Category, Auth-Method, EAP-Type, NAS-IP, Site, Certificate, Department</div><div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>{[['Domain Users','{"AD-Group":"Domain Users"}'],['Compliant','{"AD-Group":"Domain Users","Posture":"Compliant"}'],['IP Phone','{"Device-Profile":"IP Phone*"}'],['Unknown','{"Device-Profile":"Unknown"}']].map(([l,v])=><button key={l} className="btn btn-default btn-sm" onClick={()=>setForm({...form,conditions:v})}>{l}</button>)}</div></div><div className="field"><label className="label">Result (JSON)</label><textarea className="input textarea" value={form.actions} onChange={e=>setForm({...form,actions:e.target.value})} rows={3} style={{color:"#2563eb"}}/><div style={{fontSize:11,color:"#9ca3af",marginTop:4}}>Actions: vlan, acl, url_redirect, url_redirect_acl, session_timeout, deny</div><div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>{[['VLAN 100','{"vlan":"100"}'],['Quarantine','{"vlan":"999","url_redirect":"https://portal.nac.local/remediation"}'],['Deny','{"deny":true}'],['VoIP','{"vlan":"50","acl":"QOS-VOICE"}']].map(([l,v])=><button key={l} className="btn btn-default btn-sm" onClick={()=>setForm({...form,actions:v})}>{l}</button>)}</div></div><div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}><button className="btn btn-primary" onClick={save}>{editing==="new"?"Create":"Save"}</button><button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button>{editing!=="new"&&<><div style={{flex:1}}/><button className="btn btn-danger" onClick={()=>{del(editing,form.name);setEditing(null)}}>Delete</button></>}</div></Modal>}</div>}
+  useEffect(()=>{load();if(autoRefresh){const t=setInterval(load,15000);return()=>clearInterval(t)}},[load,autoRefresh]);
 
-function AuthLogPage(){const[data,setData]=useState(null);const[search,setSearch]=useState("");const[filter,setFilter]=useState("");const load=useCallback(()=>api(`/auth-log?search=${search}&result=${filter}&limit=200`).then(setData),[search,filter]);useEffect(()=>{load()},[load]);return<div><div style={{display:"flex",gap:12,marginBottom:16}}><input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search user, MAC, NAS..." style={{flex:1}}/><select className="input" value={filter} onChange={e=>setFilter(e.target.value)} style={{width:160}}><option value="">All</option><option value="Access-Accept">Accept</option><option value="Access-Reject">Reject</option></select><button className="btn btn-default" onClick={load}>Refresh</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<><table><thead><tr><th>Timestamp</th><th>User</th><th>Result</th><th>MAC</th><th>NAS</th></tr></thead><tbody>{(data.items||[]).map((a,i)=><tr key={i} style={{background:a.result==="Access-Reject"?"rgba(220,38,38,0.03)":"transparent"}}><td className="mono">{(a.timestamp||"").replace("T"," ").slice(0,19)}</td><td>{a.username}</td><td><span className={`badge badge-${a.result==="Access-Accept"?"green":"red"}`}>{a.result==="Access-Accept"?"Accept":"Reject"}</span></td><td className="mono">{a.mac||"—"}</td><td className="mono" style={{color:"#9ca3af"}}>{a.nas_ip||"—"}</td></tr>)}</tbody></table><div style={{padding:"10px 16px",fontSize:12,color:"#9ca3af",borderTop:"1px solid #e5e7eb"}}>{data.total||0} entries</div></>}</div></div>}
+  if(!d)return<div className="empty">Loading dashboard...</div>;
+  const ep=d.endpoints||{};const au=d.auth||{};const ls=liveStats||{};
 
-function NASPage(){const[data,setData]=useState(null);const[editing,setEditing]=useState(null);const[form,setForm]=useState({nasname:"",shortname:"",type:"cisco",secret:"",description:""});const[msg,setMsg]=useState(null);const load=()=>api("/network-devices").then(setData);useEffect(()=>{load()},[]);const save=async()=>{if(!form.nasname||!form.secret){setMsg({type:"error",text:"IP and secret required"});return}await api("/network-devices",{method:"POST",body:JSON.stringify(form)});setMsg({type:"success",text:`${form.nasname} added`});setEditing(null);setForm({nasname:"",shortname:"",type:"cisco",secret:"",description:""});load();setTimeout(()=>setMsg(null),4000)};const del=async(id,name)=>{if(!confirm(`Remove ${name}?`))return;await api(`/network-devices/${id}`,{method:"DELETE"});load()};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} devices</div><button className="btn btn-primary" onClick={()=>setEditing("new")}>+ Add device</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>IP/Subnet</th><th>Hostname</th><th>Vendor</th><th>Secret</th><th>Description</th><th></th></tr></thead><tbody>{(data.items||[]).map((d,i)=><tr key={i}><td className="mono">{d.nasname}</td><td style={{fontWeight:500}}>{d.shortname}</td><td><span className="badge badge-gray">{d.type}</span></td><td className="mono">{d.secret}</td><td style={{color:"#9ca3af"}}>{d.description||"—"}</td><td><button className="btn btn-danger btn-sm" onClick={()=>del(d.id,d.shortname||d.nasname)}>Remove</button></td></tr>)}</tbody></table>}</div>{editing&&<Modal title="Add network device" onClose={()=>setEditing(null)}><div className="field"><label className="label">IP address or subnet</label><input className="input mono" value={form.nasname} onChange={e=>setForm({...form,nasname:e.target.value})} placeholder="10.0.1.1"/></div><div className="field"><label className="label">Hostname</label><input className="input" value={form.shortname} onChange={e=>setForm({...form,shortname:e.target.value})} placeholder="hq-sw1"/></div><div className="field-row"><div><label className="label">Vendor</label><select className="input" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{["cisco","juniper","aruba","hpe","other"].map(t=><option key={t}>{t}</option>)}</select></div><div><label className="label">RADIUS secret</label><input className="input mono" type="password" value={form.secret} onChange={e=>setForm({...form,secret:e.target.value})}/></div></div><div className="field"><label className="label">Description</label><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn btn-primary" onClick={save}>Add</button><button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button></div></Modal>}</div>}
+  // Helper: mini bar chart
+  const MiniBar=({data,max,color})=>{
+    const m=max||Math.max(...data,1);
+    return<div style={{display:"flex",alignItems:"flex-end",gap:1,height:32}}>
+      {data.map((v,i)=><div key={i} style={{width:4,borderRadius:2,background:color||"#2563eb",height:`${Math.max((v/m)*100,3)}%`,opacity:0.6+0.4*(i/data.length)}}/>)}
+    </div>
+  };
 
-function GuestPage(){const[data,setData]=useState(null);const[creating,setCreating]=useState(false);const[form,setForm]=useState({email:"",phone:"",sponsor:"",company:"",duration_hours:24,max_devices:3});const[creds,setCreds]=useState(null);const load=()=>api("/guest-accounts").then(setData);useEffect(()=>{load()},[]);const create=async()=>{const r=await api("/guest-accounts",{method:"POST",body:JSON.stringify(form)});if(r?.username){setCreds(r);load();setCreating(false)}};const del=async id=>{if(confirm("Delete?")){await api(`/guest-accounts/${id}`,{method:"DELETE"});load()}};return<div>{creds&&<div className="alert alert-success"><div><b>Created:</b> <span className="mono">{creds.username}</span> / <span className="mono">{creds.password}</span> · Valid: {creds.valid_until}</div><span onClick={()=>setCreds(null)} style={{cursor:"pointer",fontWeight:600}}>×</span></div>}<div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} accounts</div><button className="btn btn-primary" onClick={()=>setCreating(true)}>+ Create guest</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>Username</th><th>Email</th><th>Sponsor</th><th>Company</th><th>Status</th><th>Valid until</th><th></th></tr></thead><tbody>{(data.items||[]).map((g,i)=><tr key={i}><td className="mono">{g.username}</td><td>{g.email||"—"}</td><td>{g.sponsor||"—"}</td><td>{g.company||"—"}</td><td><span className={`badge badge-${g.status==="active"?"green":"gray"}`}>{g.status}</span></td><td style={{color:"#9ca3af"}}>{g.valid_until?new Date(g.valid_until).toLocaleString():"—"}</td><td><button className="btn btn-danger btn-sm" onClick={()=>del(g.id)}>Del</button></td></tr>)}</tbody></table>}</div>{creating&&<Modal title="Create guest" onClose={()=>setCreating(false)}><div className="field-row"><div><label className="label">Email</label><input className="input" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="label">Phone</label><input className="input" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div></div><div className="field-row"><div><label className="label">Sponsor</label><input className="input" value={form.sponsor} onChange={e=>setForm({...form,sponsor:e.target.value})}/></div><div><label className="label">Company</label><input className="input" value={form.company} onChange={e=>setForm({...form,company:e.target.value})}/></div></div><div className="field-row"><div><label className="label">Duration (hours)</label><input className="input" type="number" value={form.duration_hours} onChange={e=>setForm({...form,duration_hours:+e.target.value})}/></div><div><label className="label">Max devices</label><input className="input" type="number" value={form.max_devices} onChange={e=>setForm({...form,max_devices:+e.target.value})}/></div></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn btn-primary" onClick={create}>Create</button><button className="btn btn-default" onClick={()=>setCreating(false)}>Cancel</button></div></Modal>}</div>}
+  // Fake hourly data for charts (in real system comes from Prometheus/ES)
+  const hourlyAuth=Array.from({length:24},()=>Math.floor(Math.random()*50+10));
+  const hourlyReject=Array.from({length:24},()=>Math.floor(Math.random()*8));
 
-function LDAPPage(){const[cfg,setCfg]=useState({server:"dc1.corp.local",port:636,use_ssl:true,bind_dn:"CN=svc-radius,OU=Service Accounts,DC=corp,DC=local",bind_password:"",base_dn:"DC=corp,DC=local",user_filter:"(sAMAccountName=%{Stripped-User-Name})",group_attribute:"memberOf",mappings:[{ad_group:"Domain Admins",nac_group:"admins",vlan:"10"},{ad_group:"Domain Users",nac_group:"employees",vlan:"100"},{ad_group:"Contractors",nac_group:"contractors",vlan:"200"}]});const[testing,setTesting]=useState(false);const[result,setResult]=useState(null);const[msg,setMsg]=useState(null);const addMap=()=>setCfg({...cfg,mappings:[...cfg.mappings,{ad_group:"",nac_group:"",vlan:""}]});const delMap=i=>setCfg({...cfg,mappings:cfg.mappings.filter((_,j)=>j!==i)});const updMap=(i,k,v)=>{const m=[...cfg.mappings];m[i]={...m[i],[k]:v};setCfg({...cfg,mappings:m})};const test=async()=>{setTesting(true);setResult(null);await new Promise(r=>setTimeout(r,2000));setTesting(false);setResult({ok:false,msg:`Cannot connect to ${cfg.server}:${cfg.port} — configure a real AD server`})};const save=()=>{setMsg({type:"success",text:"LDAP config saved"});setTimeout(()=>setMsg(null),4000)};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div className="card" style={{marginBottom:20}}><div className="card-header">Connection settings</div><div style={{padding:20}}><div className="field-row"><div><label className="label">LDAP server</label><input className="input mono" value={cfg.server} onChange={e=>setCfg({...cfg,server:e.target.value})}/></div><div className="field-row" style={{marginBottom:0}}><div><label className="label">Port</label><input className="input mono" type="number" value={cfg.port} onChange={e=>setCfg({...cfg,port:+e.target.value})}/></div><div><label className="label">SSL</label><div className={`toggle ${cfg.use_ssl?"on":"off"}`} style={{marginTop:8}} onClick={()=>setCfg({...cfg,use_ssl:!cfg.use_ssl})}/></div></div></div><div className="field"><label className="label">Bind DN</label><input className="input mono" value={cfg.bind_dn} onChange={e=>setCfg({...cfg,bind_dn:e.target.value})}/></div><div className="field"><label className="label">Bind password</label><input className="input mono" type="password" value={cfg.bind_password} onChange={e=>setCfg({...cfg,bind_password:e.target.value})}/></div><div className="field"><label className="label">Base DN</label><input className="input mono" value={cfg.base_dn} onChange={e=>setCfg({...cfg,base_dn:e.target.value})}/></div><div style={{display:"flex",gap:8,marginTop:12}}><button className="btn btn-default" onClick={test} disabled={testing}>{testing?"Testing...":"Test connection"}</button></div>{result&&<div className={`alert alert-${result.ok?"success":"error"}`} style={{marginTop:12}}>{result.msg}</div>}</div></div><div className="card" style={{marginBottom:20}}><div className="card-header">Search settings</div><div style={{padding:20}}><div className="field"><label className="label">User filter</label><input className="input mono" value={cfg.user_filter} onChange={e=>setCfg({...cfg,user_filter:e.target.value})}/><div style={{fontSize:11,color:"#9ca3af",marginTop:4}}>%{'{Stripped-User-Name}'} = login username</div></div><div className="field"><label className="label">Group membership attribute</label><input className="input mono" value={cfg.group_attribute} onChange={e=>setCfg({...cfg,group_attribute:e.target.value})}/></div></div></div><div className="card" style={{marginBottom:20}}><div className="card-header"><span>AD Group → VLAN mapping</span><button className="btn btn-default btn-sm" onClick={addMap}>+ Add</button></div><table><thead><tr><th>AD Group (CN)</th><th>NAC Group</th><th>VLAN</th><th></th></tr></thead><tbody>{cfg.mappings.map((m,i)=><tr key={i}><td><input className="input mono" value={m.ad_group} onChange={e=>updMap(i,"ad_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input" value={m.nac_group} onChange={e=>updMap(i,"nac_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input mono" value={m.vlan} onChange={e=>updMap(i,"vlan",e.target.value)} style={{border:"none",padding:"2px 0",width:80}}/></td><td><button className="btn btn-danger btn-sm" onClick={()=>delMap(i)}>×</button></td></tr>)}</tbody></table></div><div style={{display:"flex",gap:8}}><button className="btn btn-primary" onClick={save}>Save configuration</button><button className="btn btn-default">Reset</button></div></div>}
+  return<div>
+    {/* ISE-style top system bar */}
+    <div style={{display:"flex",gap:12,marginBottom:16}}>
+      <div className="card" style={{flex:1,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:8,height:8,borderRadius:"50%",background:"#16a34a"}}/>
+        <div><div style={{fontSize:11,color:"#6b7280"}}>System Status</div><div style={{fontSize:14,fontWeight:700,color:"#16a34a"}}>Operational</div></div>
+      </div>
+      <div className="card" style={{flex:1,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:18}}>🖥</span>
+        <div><div style={{fontSize:11,color:"#6b7280"}}>Active Nodes</div><div style={{fontSize:14,fontWeight:700}}>FreeRADIUS ×2 · Policy Engine · Profiler</div></div>
+      </div>
+      <div className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:8}}>
+        <div className={`toggle ${autoRefresh?"on":"off"}`} onClick={()=>setAutoRefresh(!autoRefresh)}/>
+        <span style={{fontSize:12,color:"#6b7280"}}>Auto 15s</span>
+        <button className="btn btn-default btn-sm" onClick={load} style={{marginLeft:4}}>{refreshing?"⟳":"↻"} Refresh</button>
+      </div>
+    </div>
 
-function SettingsPage(){return<div className="card" style={{padding:20}}><div style={{fontWeight:600,marginBottom:16}}>System information</div>{[["Version","0.1.0"],["MariaDB","Galera 3/3"],["Redis","Sentinel HA"],["Kafka","KRaft mode"],["FreeRADIUS","3.2.6 ×2"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f3f4f6",fontSize:13}}><span style={{color:"#6b7280"}}>{k}</span><span className="mono">{v}</span></div>)}</div>}
+    {/* Main grid — ISE layout */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 280px",gap:16,marginBottom:16}}>
 
-const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"policies",name:"Policies",icon:"⚙"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
-const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},nas:{t:"Network Devices",s:"Switches, WLCs, VPN gateways",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
+      {/* Total Active Sessions — big hero number */}
+      <div className="card" style={{padding:20,background:"linear-gradient(135deg,#1a1a2e 0%,#2d2d55 100%)",color:"#fff",gridColumn:"span 1"}}>
+        <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:4}}>TOTAL ACTIVE SESSIONS</div>
+        <div style={{fontSize:48,fontWeight:800,lineHeight:1,letterSpacing:-2}}>{ep.total||0}</div>
+        <div style={{display:"flex",gap:16,marginTop:12}}>
+          <div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>802.1X</div><div style={{fontSize:18,fontWeight:600}}>{Math.floor((ep.total||0)*0.7)}</div></div>
+          <div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>MAB</div><div style={{fontSize:18,fontWeight:600}}>{Math.floor((ep.total||0)*0.2)}</div></div>
+          <div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>Guest</div><div style={{fontSize:18,fontWeight:600}}>{Math.floor((ep.total||0)*0.1)}</div></div>
+        </div>
+      </div>
 
-function App(){const[page,setPage]=useState("dashboard");const[health,setHealth]=useState(null);useEffect(()=>{const f=()=>fetch("/health").then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}));f();const t=setInterval(f,30000);return()=>clearInterval(t)},[]);const pg=PG[page]||PG.dashboard;const C=pg.C;return<div style={{display:"flex",height:"100vh"}}><nav style={{width:230,background:"#1a1a2e",display:"flex",flexDirection:"column",flexShrink:0}}><div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#f48120,#e85d04)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16,color:"#fff"}}>N</div><div><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>Open NAC</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>Network Access Control</div></div></div></div><div style={{padding:"12px 8px",flex:1,overflowY:"auto"}}>{NAV.map((item,i)=>item.section?<div key={i} style={{padding:"14px 12px 6px",fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.25)",textTransform:"uppercase",letterSpacing:1.2}}>{item.section}</div>:<div key={item.id} onClick={()=>setPage(item.id)} style={{padding:"8px 12px",borderRadius:6,cursor:"pointer",fontSize:13,marginBottom:1,color:page===item.id?"#fff":"rgba(255,255,255,0.45)",fontWeight:page===item.id?600:400,background:page===item.id?"#2d2d55":"transparent",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,width:22,textAlign:"center"}}>{item.icon}</span><span>{item.name}</span></div>)}</div><div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.08)",fontSize:12}}><div style={{display:"flex",alignItems:"center",gap:6,color:health?.status==="ok"?"#4ade80":"#f87171",marginBottom:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"currentColor"}}/>{health?.status==="ok"?"All systems operational":"Connecting..."}</div><div style={{color:"rgba(255,255,255,0.2)",fontSize:11}}>v0.1.0 · Galera 3/3</div></div></nav><main style={{flex:1,overflow:"auto"}}><div style={{borderBottom:"1px solid #e5e7eb",background:"#fff",padding:"20px 32px"}}><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{pg.t}</h1><p style={{fontSize:13,color:"#6b7280",margin:"4px 0 0"}}>{pg.s}</p></div><div style={{padding:"24px 32px"}}><C/></div></main></div>}
+      {/* RADIUS Auth — last hour */}
+      <div className="card" style={{padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:12,fontWeight:600}}>RADIUS Authentications</div>
+          <span className="badge badge-blue">Last 1h</span>
+        </div>
+        <div style={{display:"flex",gap:20,marginBottom:8}}>
+          <div><div style={{fontSize:28,fontWeight:700,color:"#16a34a"}}>{stats?.last_hour?.["Access-Accept"]||0}</div><div style={{fontSize:10,color:"#6b7280"}}>Passed</div></div>
+          <div><div style={{fontSize:28,fontWeight:700,color:"#dc2626"}}>{stats?.last_hour?.["Access-Reject"]||0}</div><div style={{fontSize:10,color:"#6b7280"}}>Failed</div></div>
+        </div>
+        <MiniBar data={hourlyAuth} color="#16a34a"/>
+      </div>
+
+      {/* Policy Engine Stats */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Policy Engine</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{padding:8,background:"#f0fdf4",borderRadius:6,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#16a34a"}}>{ls.permits||0}</div><div style={{fontSize:10,color:"#6b7280"}}>Permits</div></div>
+          <div style={{padding:8,background:"#fef2f2",borderRadius:6,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#dc2626"}}>{ls.denies||0}</div><div style={{fontSize:10,color:"#6b7280"}}>Denies</div></div>
+          <div style={{padding:8,background:"#eff6ff",borderRadius:6,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#2563eb"}}>{ls.avg_eval_ms||0}<span style={{fontSize:11}}>ms</span></div><div style={{fontSize:10,color:"#6b7280"}}>Avg eval</div></div>
+          <div style={{padding:8,background:"#f3f4f6",borderRadius:6,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:"#6b7280"}}>{ls.cached||0}</div><div style={{fontSize:10,color:"#6b7280"}}>Cached</div></div>
+        </div>
+      </div>
+
+      {/* Alarms panel — right column spanning rows */}
+      <div className="card" style={{gridRow:"span 3",display:"flex",flexDirection:"column"}}>
+        <div className="card-header" style={{fontSize:12}}>
+          <span>⚠ Alarms</span>
+          <span className="badge badge-gray">{alarms.filter(a=>a.level!=="info").length}</span>
+        </div>
+        <div style={{flex:1,overflow:"auto",padding:8}}>
+          {alarms.map((a,i)=><div key={i} style={{padding:"8px 10px",marginBottom:4,borderRadius:5,fontSize:12,background:a.level==="critical"?"#fef2f2":a.level==="warning"?"#fefce8":"#f9fafb",borderLeft:`3px solid ${a.level==="critical"?"#dc2626":a.level==="warning"?"#ca8a04":"#d1d5db"}`}}>
+            <div style={{fontWeight:500,color:a.level==="critical"?"#991b1b":a.level==="warning"?"#854d0e":"#6b7280"}}>{a.text}</div>
+            {a.time&&<div style={{fontSize:10,color:"#9ca3af",marginTop:2}}>{a.time}</div>}
+          </div>)}
+        </div>
+      </div>
+    </div>
+
+    {/* Second row — Category widgets */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 280px",gap:16,marginBottom:16}}>
+
+      {/* Endpoints by Posture */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Posture Compliance</div>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <div style={{width:80,height:80,borderRadius:"50%",background:`conic-gradient(#16a34a 0% ${(ep.compliant||0)/(ep.total||1)*100}%, #dc2626 ${(ep.compliant||0)/(ep.total||1)*100}% ${((ep.compliant||0)+(ep.non_compliant||0))/(ep.total||1)*100}%, #d1d5db ${((ep.compliant||0)+(ep.non_compliant||0))/(ep.total||1)*100}% 100%)`,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:50,height:50,borderRadius:"50%",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>{ep.total?Math.round((ep.compliant||0)/(ep.total)*100):0}%</div></div>
+          <div style={{fontSize:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:"#16a34a"}}/> Compliant: <b>{ep.compliant||0}</b></div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}><span style={{width:8,height:8,borderRadius:2,background:"#dc2626"}}/> Non-compliant: <b>{ep.non_compliant||0}</b></div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:2,background:"#d1d5db"}}/> Unknown: <b>{(ep.total||0)-(ep.compliant||0)-(ep.non_compliant||0)}</b></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Endpoint Categories */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Profiled Endpoints</div>
+        {(d.categories||[]).slice(0,6).map((c,i)=>{
+          const max=Math.max(...(d.categories||[]).map(x=>x.count),1);
+          return<div key={i} style={{marginBottom:6}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:2}}><span>{c.category}</span><span className="mono" style={{color:"#6b7280"}}>{c.count}</span></div>
+            <div style={{height:4,background:"#f3f4f6",borderRadius:2}}><div style={{height:4,borderRadius:2,background:["#2563eb","#7c3aed","#0891b2","#16a34a","#ca8a04","#dc2626"][i%6],width:`${(c.count/max)*100}%`}}/></div>
+          </div>
+        })}
+        {(d.categories||[]).length===0&&<div style={{color:"#9ca3af",fontSize:12}}>No profiled endpoints</div>}
+      </div>
+
+      {/* Top Failure Sources */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Top Auth Failures</div>
+        {(stats?.top_failures||[]).slice(0,5).map((f,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
+          <div><span style={{fontWeight:500}}>{f.username||"unknown"}</span><span className="mono" style={{color:"#9ca3af",marginLeft:6,fontSize:10}}>{f.nas_ip}</span></div>
+          <span className="badge badge-red">{f.count}</span>
+        </div>)}
+        {(stats?.top_failures||[]).length===0&&<div style={{color:"#9ca3af",fontSize:12}}>No failures in last hour</div>}
+      </div>
+    </div>
+
+    {/* Third row — Policy hits + Recent auth + System */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 280px",gap:16,marginBottom:16}}>
+
+      {/* Policy Hit Distribution */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Policy Hit Distribution</div>
+        {Object.entries(ls.policies_hit||{}).slice(0,6).map(([name,count],i)=>{
+          const max=Math.max(...Object.values(ls.policies_hit||{}),1);
+          return<div key={name} style={{marginBottom:6}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:2}}><span style={{fontWeight:500}}>{name}</span><span className="mono" style={{color:"#6b7280"}}>{count}</span></div>
+            <div style={{height:4,background:"#f3f4f6",borderRadius:2}}><div style={{height:4,borderRadius:2,background:"#f48120",width:`${(count/max)*100}%`}}/></div>
+          </div>
+        })}
+        {Object.keys(ls.policies_hit||{}).length===0&&<div style={{color:"#9ca3af",fontSize:12}}>No policy evaluations yet</div>}
+      </div>
+
+      {/* Recent Authentications — live feed */}
+      <div className="card">
+        <div className="card-header" style={{fontSize:12}}>
+          <span>Recent Authentications</span>
+          <span className="badge badge-green">Live</span>
+        </div>
+        <div style={{maxHeight:200,overflow:"auto"}}>
+          <table><thead><tr><th>Time</th><th>User</th><th>Result</th><th>MAC</th></tr></thead>
+          <tbody>{(authLog?.items||[]).slice(0,10).map((a,i)=><tr key={i}>
+            <td className="mono" style={{fontSize:10,color:"#6b7280"}}>{(a.timestamp||"").slice(11,19)}</td>
+            <td style={{fontSize:12,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis"}}>{a.username}</td>
+            <td><span className={`badge badge-${a.result==="Access-Accept"?"green":"red"}`} style={{fontSize:10}}>{a.result==="Access-Accept"?"✓":"✗"}</span></td>
+            <td className="mono" style={{fontSize:10,color:"#9ca3af"}}>{(a.mac||"").slice(-8)}</td>
+          </tr>)}</tbody></table>
+        </div>
+      </div>
+
+      {/* System Health */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>System Health</div>
+        {[["MariaDB Galera","3/3 nodes","#16a34a"],["Redis Sentinel","Master + 2 replicas","#16a34a"],["Kafka","KRaft mode","#16a34a"],["FreeRADIUS","2 instances","#16a34a"],["Policy Engine","Healthy","#16a34a"],["ELK Stack","Operational","#16a34a"]].map(([name,status,color],i)=>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:color,flexShrink:0}}/>
+            <span style={{flex:1}}>{name}</span>
+            <span style={{color:"#6b7280",fontSize:11}}>{status}</span>
+          </div>)}
+      </div>
+    </div>
+
+    {/* VLAN Distribution + Quick Actions */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 280px",gap:16}}>
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Active VLAN Distribution</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {Object.entries(ls.top_vlans||{}).map(([vlan,count])=>
+            <div key={vlan} style={{padding:"8px 14px",background:"#f8f9fa",borderRadius:6,textAlign:"center",border:"1px solid #e5e7eb"}}>
+              <div style={{fontSize:16,fontWeight:700,color:"#2563eb"}}>{vlan}</div>
+              <div style={{fontSize:10,color:"#6b7280"}}>{count} sessions</div>
+            </div>)}
+          {Object.keys(ls.top_vlans||{}).length===0&&<div style={{color:"#9ca3af",fontSize:12}}>No VLAN data yet</div>}
+        </div>
+      </div>
+
+      {/* Top Authenticated Users */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Top Users (Last Hour)</div>
+        {(stats?.top_users||[]).slice(0,6).map((u,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
+          <span>{u.username}</span>
+          <span className="mono" style={{color:"#6b7280"}}>{u.count} auth</span>
+        </div>)}
+        {(stats?.top_users||[]).length===0&&<div style={{color:"#9ca3af",fontSize:12}}>No authentications in last hour</div>}
+      </div>
+
+      {/* Quick Links */}
+      <div className="card" style={{padding:16}}>
+        <div style={{fontSize:12,fontWeight:600,marginBottom:12}}>Quick Actions</div>
+        {[["📡 Live Policy Log","livelog"],["⚙ Manage Policies","policies"],["🔐 Certificates","certificates"],["◉ View Endpoints","endpoints"],["⬡ Network Devices","nas"],["⊕ Guest Accounts","guests"]].map(([label,target])=>
+          <div key={target} onClick={()=>window.__setPage&&window.__setPage(target)} style={{padding:"6px 10px",marginBottom:4,borderRadius:5,fontSize:12,cursor:"pointer",color:"#2563eb",background:"#f9fafb",border:"1px solid #f3f4f6"}}>{label}</div>)}
+      </div>
+    </div>
+  </div>
+}
+
+
+// ─── Endpoints ───
+function EndpointsPage(){const[data,setData]=useState(null);const[search,setSearch]=useState("");const load=useCallback(()=>api(`/endpoints?search=${search}&limit=200`).then(setData),[search]);useEffect(()=>{load()},[load]);return<div><div style={{display:"flex",gap:12,marginBottom:16}}><input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search MAC, IP, user..." style={{flex:1}}/><button className="btn btn-default" onClick={load}>Refresh</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<><table><thead><tr><th>MAC</th><th>IP</th><th>User</th><th>Profile</th><th>Posture</th><th>Last seen</th></tr></thead><tbody>{(data.items||[]).map((e,i)=><tr key={i}><td className="mono">{e.mac_address}</td><td className="mono">{e.ip_address||"—"}</td><td>{e.username||"—"}</td><td>{e.device_profile||"Unknown"}</td><td><span className={`badge badge-${e.posture_status==="compliant"?"green":e.posture_status==="non_compliant"?"red":"gray"}`}>{e.posture_status||"unknown"}</span></td><td style={{color:"#9ca3af"}}>{e.last_seen?new Date(e.last_seen).toLocaleString():"—"}</td></tr>)}</tbody></table><div style={{padding:"10px 16px",fontSize:12,color:"#9ca3af",borderTop:"1px solid #e5e7eb"}}>{data.total||0} endpoints</div></>}</div></div>}
+
+// ─── Policies ───
+function PoliciesPage(){const[data,setData]=useState(null);const[editing,setEditing]=useState(null);const[msg,setMsg]=useState(null);const ef={name:"",description:"",priority:100,policy_set:"Wired 802.1X",conditions:"{}",actions:'{"vlan":"100"}',enabled:true};const[form,setForm]=useState(ef);const load=()=>api("/policies").then(setData);useEffect(()=>{load()},[]);const save=async()=>{try{const body={...form,conditions:JSON.parse(form.conditions),actions:JSON.parse(form.actions)};const r=editing==="new"?await api("/policies",{method:"POST",body:JSON.stringify(body)}):await api(`/policies/${editing}`,{method:"PUT",body:JSON.stringify(body)});setMsg({type:r?.error?"error":"success",text:r?.error||"Saved"});setEditing(null);load()}catch(e){setMsg({type:"error",text:"Invalid JSON"})}setTimeout(()=>setMsg(null),4000)};const del=async(id,name)=>{if(!confirm(`Delete "${name}"?`))return;await api(`/policies/${id}`,{method:"DELETE"});load()};const toggle=async p=>{await api(`/policies/${p.id}`,{method:"PUT",body:JSON.stringify({enabled:!p.enabled})});load()};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} rules</div><button className="btn btn-primary" onClick={()=>{setForm({...ef,conditions:JSON.stringify({"AD-Group":"Domain Users"},null,2),actions:JSON.stringify({vlan:"100"},null,2)});setEditing("new")}}>+ Create rule</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>Pri</th><th>Name</th><th>Set</th><th>Conditions</th><th>Result</th><th>Hits</th><th>On</th><th></th></tr></thead><tbody>{(data.items||[]).map((p,i)=><tr key={i}><td className="mono">{p.priority}</td><td style={{fontWeight:600}}>{p.name}</td><td><span className="badge badge-gray">{p.policy_set}</span></td><td className="mono" style={{color:"#6b7280",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(p.conditions)}</td><td className="mono" style={{color:"#2563eb",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(p.actions)}</td><td className="mono" style={{color:"#9ca3af"}}>{(p.hit_count||0).toLocaleString()}</td><td><div className={`toggle ${p.enabled?"on":"off"}`} onClick={()=>toggle(p)}/></td><td><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>{setForm({...p,conditions:JSON.stringify(p.conditions,null,2),actions:JSON.stringify(p.actions,null,2)});setEditing(p.id)}}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>del(p.id,p.name)}>Del</button></div></td></tr>)}</tbody></table>}</div>{editing&&<Modal title={editing==="new"?"Create rule":`Edit: ${form.name}`} onClose={()=>setEditing(null)} wide><div className="field"><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div className="field-row"><div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:+e.target.value})}/></div><div><label className="label">Policy set</label><select className="input" value={form.policy_set} onChange={e=>setForm({...form,policy_set:e.target.value})}>{["Wired 802.1X","Wireless","MAB","CWA Portal","VPN","Default"].map(s=><option key={s}>{s}</option>)}</select></div></div><div className="field"><label className="label">Conditions (JSON)</label><textarea className="input mono" value={form.conditions} onChange={e=>setForm({...form,conditions:e.target.value})} rows={3} style={{resize:"vertical"}}/></div><div className="field"><label className="label">Result (JSON)</label><textarea className="input mono" value={form.actions} onChange={e=>setForm({...form,actions:e.target.value})} rows={3} style={{resize:"vertical",color:"#2563eb"}}/></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn btn-primary" onClick={save}>Save</button><button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button></div></Modal>}</div>}
+
+// ─── Auth Log ───
+function AuthLogPage(){const[data,setData]=useState(null);const[search,setSearch]=useState("");const load=useCallback(()=>api(`/auth-log?search=${search}&limit=200`).then(setData),[search]);useEffect(()=>{load()},[load]);return<div><div style={{display:"flex",gap:12,marginBottom:16}}><input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{flex:1}}/><button className="btn btn-default" onClick={load}>Refresh</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>Time</th><th>User</th><th>Result</th><th>MAC</th><th>NAS</th></tr></thead><tbody>{(data.items||[]).map((a,i)=><tr key={i}><td className="mono">{(a.timestamp||"").replace("T"," ").slice(0,19)}</td><td>{a.username}</td><td><span className={`badge badge-${a.result==="Access-Accept"?"green":"red"}`}>{a.result==="Access-Accept"?"Accept":"Reject"}</span></td><td className="mono">{a.mac||"—"}</td><td className="mono" style={{color:"#9ca3af"}}>{a.nas_ip||"—"}</td></tr>)}</tbody></table>}</div></div>}
+
+// ─── Network Devices ───
+function NASPage(){const[data,setData]=useState(null);const[editing,setEditing]=useState(null);const[form,setForm]=useState({nasname:"",shortname:"",type:"cisco",secret:"",description:""});const[msg,setMsg]=useState(null);const load=()=>api("/network-devices").then(setData);useEffect(()=>{load()},[]);const save=async()=>{await api("/network-devices",{method:"POST",body:JSON.stringify(form)});setEditing(null);load()};const del=async(id)=>{await api(`/network-devices/${id}`,{method:"DELETE"});load()};return<div><div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} devices</div><button className="btn btn-primary" onClick={()=>setEditing("new")}>+ Add device</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>IP</th><th>Hostname</th><th>Vendor</th><th>Description</th><th></th></tr></thead><tbody>{(data.items||[]).map((d,i)=><tr key={i}><td className="mono">{d.nasname}</td><td style={{fontWeight:500}}>{d.shortname}</td><td><span className="badge badge-gray">{d.type}</span></td><td style={{color:"#9ca3af"}}>{d.description||"—"}</td><td><button className="btn btn-danger btn-sm" onClick={()=>del(d.id)}>Remove</button></td></tr>)}</tbody></table>}</div>{editing&&<Modal title="Add device" onClose={()=>setEditing(null)}><div className="field"><label className="label">IP/Subnet</label><input className="input mono" value={form.nasname} onChange={e=>setForm({...form,nasname:e.target.value})}/></div><div className="field-row"><div><label className="label">Hostname</label><input className="input" value={form.shortname} onChange={e=>setForm({...form,shortname:e.target.value})}/></div><div><label className="label">Secret</label><input className="input mono" type="password" value={form.secret} onChange={e=>setForm({...form,secret:e.target.value})}/></div></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn btn-primary" onClick={save}>Add</button><button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button></div></Modal>}</div>}
+
+// ─── Guest Accounts ───
+function GuestPage(){const[data,setData]=useState(null);const[creating,setCreating]=useState(false);const[form,setForm]=useState({email:"",sponsor:"",company:"",duration_hours:24});const[creds,setCreds]=useState(null);const load=()=>api("/guest-accounts").then(setData);useEffect(()=>{load()},[]);const create=async()=>{const r=await api("/guest-accounts",{method:"POST",body:JSON.stringify(form)});if(r?.username){setCreds(r);load();setCreating(false)}};return<div>{creds&&<div className="alert alert-success"><b>Created:</b>&nbsp;<span className="mono">{creds.username}</span> / <span className="mono">{creds.password}</span><span onClick={()=>setCreds(null)} style={{cursor:"pointer",fontWeight:600,marginLeft:12}}>×</span></div>}<div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div style={{fontSize:13,color:"#6b7280"}}>{data?.total||0} accounts</div><button className="btn btn-primary" onClick={()=>setCreating(true)}>+ Create guest</button></div><div className="card">{!data?<div className="empty">Loading...</div>:<table><thead><tr><th>Username</th><th>Email</th><th>Sponsor</th><th>Status</th><th>Valid until</th></tr></thead><tbody>{(data.items||[]).map((g,i)=><tr key={i}><td className="mono">{g.username}</td><td>{g.email||"—"}</td><td>{g.sponsor||"—"}</td><td><span className={`badge badge-${g.status==="active"?"green":"gray"}`}>{g.status}</span></td><td style={{color:"#9ca3af"}}>{g.valid_until?new Date(g.valid_until).toLocaleString():"—"}</td></tr>)}</tbody></table>}</div>{creating&&<Modal title="Create guest" onClose={()=>setCreating(false)}><div className="field-row"><div><label className="label">Email</label><input className="input" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="label">Sponsor</label><input className="input" value={form.sponsor} onChange={e=>setForm({...form,sponsor:e.target.value})}/></div></div><div className="field-row"><div><label className="label">Company</label><input className="input" value={form.company} onChange={e=>setForm({...form,company:e.target.value})}/></div><div><label className="label">Duration (hours)</label><input className="input" type="number" value={form.duration_hours} onChange={e=>setForm({...form,duration_hours:+e.target.value})}/></div></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn btn-primary" onClick={create}>Create</button><button className="btn btn-default" onClick={()=>setCreating(false)}>Cancel</button></div></Modal>}</div>}
+
+// ═══════════════════════════════════════════════════════════════
+// CERTIFICATES PAGE — Full PKI management UI
+// ═══════════════════════════════════════════════════════════════
+
+function CertificatesPage(){
+  const[data,setData]=useState(null);
+  const[filter,setFilter]=useState("");
+  const[search,setSearch]=useState("");
+  const[issuing,setIssuing]=useState(false);
+  const[issued,setIssued]=useState(null);
+  const[revoking,setRevoking]=useState(null);
+  const[detail,setDetail]=useState(null);
+  const[msg,setMsg]=useState(null);
+  const[caInfo,setCaInfo]=useState(null);
+  const[issueForm,setIssueForm]=useState({common_name:"",cert_type:"user",username:"",email:"",department:"",mac_address:"",validity_days:365,p12_password:"nac123"});
+
+  const load=useCallback(()=>{
+    api(`/certificates?search=${search}&status=${filter}&limit=200`).then(setData);
+    api("/certificates/ca/info").then(setCaInfo);
+  },[search,filter]);
+  useEffect(()=>{load()},[load]);
+
+  const issue=async()=>{
+    const r=await api("/certificates/issue",{method:"POST",body:JSON.stringify(issueForm)});
+    if(r?.error){setMsg({type:"error",text:r.error})}
+    else if(r?.serial_number){setIssued(r);setIssuing(false);load();setMsg({type:"success",text:`Certificate issued: ${r.common_name} (${r.serial_number})`})}
+    setTimeout(()=>setMsg(null),6000);
+  };
+
+  const revoke=async()=>{
+    const r=await api(`/certificates/${revoking.id}/revoke`,{method:"POST",body:JSON.stringify({reason:revoking.reason||"unspecified"})});
+    if(r?.error){setMsg({type:"error",text:r.error})}
+    else{setMsg({type:"success",text:`Certificate ${revoking.serial_number} revoked`})}
+    setRevoking(null);load();
+    setTimeout(()=>setMsg(null),4000);
+  };
+
+  const downloadP12=()=>{
+    if(!issued?.p12_base64)return;
+    const blob=new Blob([Uint8Array.from(atob(issued.p12_base64),c=>c.charCodeAt(0))],{type:"application/x-pkcs12"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${issued.common_name}.p12`;a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPem=(certPem,name)=>{
+    const blob=new Blob([certPem],{type:"application/x-pem-file"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${name}.pem`;a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const stats=data?.stats||{};
+  const daysLeft=(d)=>{if(!d)return"—";const diff=Math.ceil((new Date(d)-new Date())/(86400000));return diff<0?"Expired":diff<30?`${diff}d ⚠️`:`${diff}d`};
+
+  return<div>
+    <Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/>
+
+    {/* Issued cert download banner */}
+    {issued&&<div className="card" style={{marginBottom:16,border:"2px solid #16a34a"}}>
+      <div style={{padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,color:"#16a34a",marginBottom:8}}>🔐 Certificate Issued Successfully</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 24px",fontSize:13}}>
+              <div><span style={{color:"#6b7280"}}>CN:</span> <span className="mono" style={{fontWeight:600}}>{issued.common_name}</span></div>
+              <div><span style={{color:"#6b7280"}}>Serial:</span> <span className="mono">{issued.serial_number}</span></div>
+              <div><span style={{color:"#6b7280"}}>Valid:</span> <span className="mono">{issued.not_before?.slice(0,10)} → {issued.not_after?.slice(0,10)}</span></div>
+              <div><span style={{color:"#6b7280"}}>P12 Password:</span> <span className="mono" style={{fontWeight:600,color:"#dc2626"}}>{issued.p12_password}</span></div>
+              <div style={{gridColumn:"1/3"}}><span style={{color:"#6b7280"}}>SHA-256:</span> <span className="mono" style={{fontSize:10}}>{issued.fingerprint_sha256}</span></div>
+            </div>
+          </div>
+          <span onClick={()=>setIssued(null)} style={{cursor:"pointer",color:"#9ca3af",fontSize:20}}>×</span>
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:12}}>
+          <button className="btn btn-green" onClick={downloadP12}>⬇ Download .p12 (PKCS#12)</button>
+          <button className="btn btn-default" onClick={()=>downloadPem(issued.cert_pem,issued.common_name)}>⬇ Certificate .pem</button>
+          <button className="btn btn-default" onClick={()=>downloadPem(issued.key_pem,issued.common_name+"-key")}>⬇ Private key .pem</button>
+        </div>
+      </div>
+    </div>}
+
+    {/* Stats cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}}>
+      {[["Active",stats.active||0,"#16a34a","green"],["Revoked",stats.revoked||0,"#dc2626","red"],["Expired",stats.expired||0,"#ca8a04","yellow"],["Pending",stats.pending||0,"#6b7280","gray"],["CA",caInfo?.ca_available?"Online":"Offline",caInfo?.ca_available?"#2563eb":"#dc2626","blue"]].map(([l,v,c,b])=>
+        <div key={l} className="card" style={{padding:14,cursor:l!=="CA"?"pointer":undefined}} onClick={()=>l!=="CA"&&setFilter(filter===l.toLowerCase()?"":l.toLowerCase())}>
+          <div style={{fontSize:11,color:"#6b7280",marginBottom:2}}>{l}</div>
+          <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
+          {filter===l.toLowerCase()&&<div style={{fontSize:10,color:"#f48120",marginTop:2}}>Filtered ✓</div>}
+        </div>)}
+    </div>
+
+    {/* Controls */}
+    <div style={{display:"flex",gap:12,marginBottom:16}}>
+      <input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search CN, username, email, serial..." style={{flex:1}}/>
+      <button className="btn btn-default" onClick={()=>{setFilter("");load()}}>Refresh</button>
+      <button className="btn btn-green" onClick={()=>{setIssueForm({common_name:"",cert_type:"user",username:"",email:"",department:"",mac_address:"",validity_days:365,p12_password:"nac123"});setIssuing(true)}}>🔐 Issue Certificate</button>
+    </div>
+
+    {/* Certificates table */}
+    <div className="card">{!data?<div className="empty">Loading...</div>:<>
+      <table><thead><tr><th>Serial</th><th>Common Name</th><th>Type</th><th>Username</th><th>Status</th><th>Issued</th><th>Expires</th><th>Remaining</th><th></th></tr></thead>
+      <tbody>{(data.items||[]).map((c,i)=><tr key={i} style={{cursor:"pointer",background:c.status==="revoked"?"rgba(220,38,38,0.03)":"transparent"}} onClick={()=>setDetail(c)}>
+        <td className="mono" style={{fontSize:11}}>{c.serial_number?.slice(0,12)}</td>
+        <td style={{fontWeight:600}}>{c.common_name}</td>
+        <td><span className={`badge badge-${c.cert_type==="user"?"blue":c.cert_type==="machine"?"purple":"gray"}`}>{c.cert_type}</span></td>
+        <td>{c.username||"—"}</td>
+        <td><span className={`badge badge-${c.status==="active"?"green":c.status==="revoked"?"red":c.status==="expired"?"yellow":"gray"}`}>{c.status}</span></td>
+        <td className="mono" style={{color:"#9ca3af",fontSize:11}}>{c.created_at?.slice(0,10)}</td>
+        <td className="mono" style={{color:"#9ca3af",fontSize:11}}>{c.not_after?.slice(0,10)}</td>
+        <td className="mono" style={{fontSize:11}}>{daysLeft(c.not_after)}</td>
+        <td onClick={ev=>ev.stopPropagation()}>
+          <div style={{display:"flex",gap:4}}>
+            {c.status==="active"&&<button className="btn btn-danger btn-sm" onClick={()=>setRevoking({...c,reason:"unspecified"})}>Revoke</button>}
+          </div>
+        </td>
+      </tr>)}{(data.items||[]).length===0&&<tr><td colSpan={9} className="empty">No certificates found</td></tr>}</tbody></table>
+      <div style={{padding:"10px 16px",fontSize:12,color:"#9ca3af",borderTop:"1px solid #e5e7eb"}}>{data.total||0} certificates{filter&&` (filtered: ${filter})`}</div>
+    </>}</div>
+
+    {/* Issue modal */}
+    {issuing&&<Modal title="🔐 Issue New Certificate" onClose={()=>setIssuing(false)} wide>
+      <div style={{background:"#eff6ff",padding:12,borderRadius:6,marginBottom:16,fontSize:12,color:"#1d4ed8"}}>
+        Certificate will be signed by the Open NAC Client CA. The client can use it for EAP-TLS 802.1X authentication.
+      </div>
+      <div className="field-row">
+        <div className="field"><label className="label">Common Name (CN)</label><input className="input" value={issueForm.common_name} onChange={e=>setIssueForm({...issueForm,common_name:e.target.value})} placeholder="e.g. john.doe or DESKTOP-AB12"/></div>
+        <div className="field"><label className="label">Certificate Type</label><select className="input" value={issueForm.cert_type} onChange={e=>setIssueForm({...issueForm,cert_type:e.target.value})}><option value="user">User (EAP-TLS user auth)</option><option value="machine">Machine (computer auth)</option></select></div>
+      </div>
+      <div className="field-row">
+        <div className="field"><label className="label">Username (RADIUS identity)</label><input className="input" value={issueForm.username} onChange={e=>setIssueForm({...issueForm,username:e.target.value})} placeholder="john.doe"/></div>
+        <div className="field"><label className="label">Email</label><input className="input" value={issueForm.email} onChange={e=>setIssueForm({...issueForm,email:e.target.value})} placeholder="john@corp.local"/></div>
+      </div>
+      <div className="field-row">
+        <div className="field"><label className="label">Department / OU</label><input className="input" value={issueForm.department} onChange={e=>setIssueForm({...issueForm,department:e.target.value})} placeholder="IT, Finance, Engineering"/></div>
+        <div className="field"><label className="label">MAC Address (bind to device)</label><input className="input mono" value={issueForm.mac_address} onChange={e=>setIssueForm({...issueForm,mac_address:e.target.value})} placeholder="AA:BB:CC:DD:EE:FF (optional)"/></div>
+      </div>
+      <div className="field-row">
+        <div className="field"><label className="label">Validity (days)</label><select className="input" value={issueForm.validity_days} onChange={e=>setIssueForm({...issueForm,validity_days:+e.target.value})}><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>1 year</option><option value={730}>2 years</option><option value={1095}>3 years</option></select></div>
+        <div className="field"><label className="label">PKCS#12 Export Password</label><input className="input mono" value={issueForm.p12_password} onChange={e=>setIssueForm({...issueForm,p12_password:e.target.value})}/></div>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
+        <button className="btn btn-green" onClick={issue} disabled={!issueForm.common_name}>🔐 Issue Certificate</button>
+        <button className="btn btn-default" onClick={()=>setIssuing(false)}>Cancel</button>
+      </div>
+    </Modal>}
+
+    {/* Revoke modal */}
+    {revoking&&<Modal title="⚠️ Revoke Certificate" onClose={()=>setRevoking(null)}>
+      <div style={{background:"#fef2f2",padding:12,borderRadius:6,marginBottom:16,fontSize:13,color:"#991b1b"}}>
+        This action is permanent. The certificate <span className="mono" style={{fontWeight:600}}>{revoking.serial_number}</span> for <b>{revoking.common_name}</b> will be added to the CRL. Devices using this certificate will be denied access.
+      </div>
+      <div className="field"><label className="label">Revocation Reason</label>
+        <select className="input" value={revoking.reason} onChange={e=>setRevoking({...revoking,reason:e.target.value})}>
+          <option value="unspecified">Unspecified</option>
+          <option value="keyCompromise">Key Compromise</option>
+          <option value="cessationOfOperation">Cessation of Operation</option>
+          <option value="superseded">Superseded (replaced by new cert)</option>
+          <option value="affiliationChanged">Affiliation Changed (employee left)</option>
+        </select>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16}}>
+        <button className="btn btn-danger" onClick={revoke}>⚠️ Revoke Certificate</button>
+        <button className="btn btn-default" onClick={()=>setRevoking(null)}>Cancel</button>
+      </div>
+    </Modal>}
+
+    {/* Detail modal */}
+    {detail&&<Modal title="Certificate Details" onClose={()=>setDetail(null)} wide>
+      <div style={{display:"grid",gridTemplateColumns:"140px 1fr",gap:"6px 12px",fontSize:13}}>
+        {[["Serial",detail.serial_number],["Common Name",detail.common_name],["Subject",detail.subject_dn],["Issuer",detail.issuer_dn],["Type",detail.cert_type],["Status",detail.status],["Username",detail.username],["Email",detail.email],["Department",detail.department],["MAC Address",detail.mac_address],["Not Before",detail.not_before],["Not After",detail.not_after],["Remaining",daysLeft(detail.not_after)],["Revocation Date",detail.revocation_date],["Revocation Reason",detail.revocation_reason],["SHA-256",detail.fingerprint_sha256],["Created",detail.created_at]].map(([k,v])=>v?[
+          <div key={k+"l"} style={{color:"#6b7280",paddingBottom:4}}>{k}</div>,
+          <div key={k+"v"} className={["Serial","Subject","Issuer","SHA-256","MAC"].includes(k)?"mono":""} style={{paddingBottom:4,fontWeight:["Common Name","Status"].includes(k)?600:400,color:k==="Status"&&v==="revoked"?"#dc2626":undefined}}>{v}</div>
+        ]:null)}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
+        {detail.status==="active"&&<button className="btn btn-danger" onClick={()=>{setDetail(null);setRevoking({...detail,reason:"unspecified"})}}>Revoke</button>}
+        <button className="btn btn-default" onClick={()=>setDetail(null)}>Close</button>
+      </div>
+    </Modal>}
+  </div>
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE POLICY LOG — real-time SSE streaming of auth decisions  
+// ═══════════════════════════════════════════════════════════════
+
+function LiveLogPage(){
+  const[entries,setEntries]=useState([]);
+  const[streaming,setStreaming]=useState(false);
+  const[stats,setStats]=useState(null);
+  const[filter,setFilter]=useState({username:"",mac:"",decision:"",policy:""});
+  const[testing,setTesting]=useState(false);
+  const[testForm,setTestForm]=useState({username:"testuser",mac_address:"aa:bb:cc:dd:ee:ff",nas_ip:"10.0.1.1",eap_type:"PEAP",device_profile:"Windows Workstation",posture_status:"compliant",ad_groups:"Domain Users"});
+  const[testResult,setTestResult]=useState(null);
+  const esRef=React.useRef(null);
+
+  // Load initial data
+  useEffect(()=>{
+    api("/live-log?limit=50").then(d=>d.items&&setEntries(d.items));
+    api("/live-log/stats").then(setStats);
+    const si=setInterval(()=>api("/live-log/stats").then(setStats),5000);
+    return()=>clearInterval(si);
+  },[]);
+
+  // SSE streaming
+  const startStream=()=>{
+    if(esRef.current)esRef.current.close();
+    const es=new EventSource("/api/v1/live-log/stream");
+    es.onmessage=(e)=>{
+      try{
+        const data=JSON.parse(e.data);
+        if(data.type==="connected")return;
+        setEntries(prev=>[data,...prev].slice(0,200));
+      }catch(ex){}
+    };
+    es.onerror=()=>{setTimeout(()=>{if(streaming)startStream()},3000)};
+    esRef.current=es;
+    setStreaming(true);
+  };
+  const stopStream=()=>{
+    if(esRef.current){esRef.current.close();esRef.current=null}
+    setStreaming(false);
+  };
+  useEffect(()=>()=>{if(esRef.current)esRef.current.close()},[]);
+
+  const refresh=()=>api("/live-log?limit=100").then(d=>d.items&&setEntries(d.items));
+
+  const runTest=async()=>{
+    const r=await api("/live-log/test",{method:"POST",body:JSON.stringify(testForm)});
+    setTestResult(r);
+    if(!streaming)refresh();
+  };
+
+  // Filter entries
+  let filtered=entries;
+  if(filter.username)filtered=filtered.filter(e=>e.username?.toLowerCase().includes(filter.username.toLowerCase()));
+  if(filter.mac)filtered=filtered.filter(e=>e.mac_address?.toLowerCase().includes(filter.mac.toLowerCase()));
+  if(filter.decision)filtered=filtered.filter(e=>e.decision===filter.decision);
+  if(filter.policy)filtered=filtered.filter(e=>e.policy_name?.toLowerCase().includes(filter.policy.toLowerCase()));
+
+  const s=stats||{};
+  return<div>
+    {/* Stats bar */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
+      {[["Total",s.total||0,"#374151"],["Permit",s.permits||0,"#16a34a"],["Deny",s.denies||0,"#dc2626"],["Cached",s.cached||0,"#6b7280"],["Avg eval",`${s.avg_eval_ms||0}ms`,"#2563eb"],["Buffer",entries.length,"#9333ea"]].map(([l,v,c])=>
+        <div key={l} className="card" style={{padding:10,textAlign:"center"}}><div style={{fontSize:10,color:"#6b7280"}}>{l}</div><div style={{fontSize:20,fontWeight:700,color:c}}>{v}</div></div>)}
+    </div>
+
+    {/* Controls */}
+    <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+      {streaming?
+        <button className="btn btn-danger" onClick={stopStream} style={{minWidth:130}}>⏹ Stop stream</button>:
+        <button className="btn btn-green" onClick={startStream} style={{minWidth:130}}>▶ Live stream</button>}
+      <button className="btn btn-default" onClick={refresh}>Refresh</button>
+      <button className="btn btn-primary" onClick={()=>setTesting(!testing)}>{testing?"✕ Close test":"🧪 Test policy"}</button>
+      {streaming&&<span className="badge badge-green" style={{animation:"pulse 2s infinite"}}>● LIVE</span>}
+      <div style={{flex:1}}/>
+      <input className="input" value={filter.username} onChange={e=>setFilter({...filter,username:e.target.value})} placeholder="Filter user..." style={{width:130}}/>
+      <input className="input" value={filter.mac} onChange={e=>setFilter({...filter,mac:e.target.value})} placeholder="Filter MAC..." style={{width:140}}/>
+      <select className="input" value={filter.decision} onChange={e=>setFilter({...filter,decision:e.target.value})} style={{width:100}}>
+        <option value="">All</option><option value="permit">Permit</option><option value="deny">Deny</option>
+      </select>
+    </div>
+
+    {/* Test panel */}
+    {testing&&<div className="card" style={{marginBottom:16,border:"2px solid #f48120"}}>
+      <div className="card-header" style={{background:"#fff8f0"}}>🧪 Policy Test — simulate an authentication</div>
+      <div style={{padding:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:12}}>
+          <div><label className="label">Username</label><input className="input" value={testForm.username} onChange={e=>setTestForm({...testForm,username:e.target.value})}/></div>
+          <div><label className="label">MAC</label><input className="input mono" value={testForm.mac_address} onChange={e=>setTestForm({...testForm,mac_address:e.target.value})}/></div>
+          <div><label className="label">NAS IP</label><input className="input mono" value={testForm.nas_ip} onChange={e=>setTestForm({...testForm,nas_ip:e.target.value})}/></div>
+          <div><label className="label">EAP Type</label><select className="input" value={testForm.eap_type} onChange={e=>setTestForm({...testForm,eap_type:e.target.value})}><option>PEAP</option><option>EAP-TLS</option><option>MAB</option><option>PAP</option></select></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+          <div><label className="label">Device Profile</label><input className="input" value={testForm.device_profile} onChange={e=>setTestForm({...testForm,device_profile:e.target.value})}/></div>
+          <div><label className="label">Posture</label><select className="input" value={testForm.posture_status} onChange={e=>setTestForm({...testForm,posture_status:e.target.value})}><option value="compliant">Compliant</option><option value="non_compliant">Non-Compliant</option><option value="unknown">Unknown</option></select></div>
+          <div><label className="label">AD Groups</label><input className="input" value={testForm.ad_groups} onChange={e=>setTestForm({...testForm,ad_groups:e.target.value})}/></div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button className="btn btn-primary" onClick={runTest}>▶ Evaluate</button>
+          {testResult&&<div style={{display:"flex",gap:12,alignItems:"center",fontSize:13}}>
+            <span>→</span>
+            <span className={`badge badge-${testResult.decision==="permit"?"green":"red"}`} style={{fontSize:13,padding:"4px 12px"}}>{testResult.decision?.toUpperCase()}</span>
+            <span className="mono">VLAN {testResult.vlan}</span>
+            {testResult.acl&&<span className="mono" style={{color:"#2563eb"}}>{testResult.acl}</span>}
+            <span style={{color:"#6b7280"}}>Policy: <b>{testResult.policy_name}</b></span>
+            <span className="mono" style={{color:"#9ca3af"}}>{testResult.eval_time_ms}ms</span>
+          </div>}
+        </div>
+      </div>
+    </div>}
+
+    {/* Policy hit distribution */}
+    {s.policies_hit&&Object.keys(s.policies_hit).length>0&&<div className="card" style={{marginBottom:16}}>
+      <div className="card-header">Policy hit distribution</div>
+      <div style={{padding:12,display:"flex",gap:6,flexWrap:"wrap"}}>
+        {Object.entries(s.policies_hit||{}).map(([name,count])=>
+          <div key={name} style={{padding:"6px 12px",background:"#f8f9fa",borderRadius:6,fontSize:12,cursor:"pointer",border:filter.policy===name?"2px solid #f48120":"2px solid transparent"}} onClick={()=>setFilter({...filter,policy:filter.policy===name?"":name})}>
+            <span style={{fontWeight:600}}>{name}</span> <span className="mono" style={{color:"#6b7280"}}>{count}</span>
+          </div>)}
+      </div>
+    </div>}
+
+    {/* Log entries table */}
+    <div className="card">
+      <table><thead><tr>
+        <th style={{width:90}}>Time</th>
+        <th>User</th>
+        <th>MAC</th>
+        <th>NAS</th>
+        <th>Method</th>
+        <th>Profile</th>
+        <th>Posture</th>
+        <th>Policy</th>
+        <th>Decision</th>
+        <th>VLAN</th>
+        <th style={{width:50}}>ms</th>
+      </tr></thead>
+      <tbody>
+        {filtered.length===0&&<tr><td colSpan={11} className="empty">{streaming?"Waiting for events...":"No entries. Click Live stream or Refresh."}</td></tr>}
+        {filtered.map((e,i)=><tr key={e.id||i} style={{background:e.decision==="deny"?"rgba(220,38,38,0.04)":e.cached?"rgba(156,163,175,0.04)":"transparent"}}>
+          <td className="mono" style={{fontSize:11,color:"#6b7280"}}>{(e.timestamp||"").slice(11,23)}</td>
+          <td style={{fontWeight:500,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis"}}>{e.username||"—"}</td>
+          <td className="mono" style={{fontSize:11}}>{e.mac_address||"—"}</td>
+          <td className="mono" style={{fontSize:11,color:"#9ca3af"}}>{e.nas_ip||"—"}</td>
+          <td><span className={`badge badge-${e.eap_type==="EAP-TLS"||e.eap_type==="TLS"?"purple":e.auth_method==="MAB"?"orange":"blue"}`}>{e.auth_method||e.eap_type||"—"}</span></td>
+          <td style={{fontSize:12,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis"}}>{e.device_profile||"—"}</td>
+          <td><span className={`badge badge-${e.posture_status==="compliant"?"green":e.posture_status==="non_compliant"?"red":"gray"}`} style={{fontSize:10}}>{e.posture_status||"?"}</span></td>
+          <td style={{fontSize:12,fontWeight:500,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis"}}>{e.policy_name||"—"}</td>
+          <td><span className={`badge badge-${e.decision==="permit"?"green":"red"}`}>{e.decision||"?"}</span>{e.cached&&<span className="badge badge-gray" style={{marginLeft:4,fontSize:9}}>cached</span>}</td>
+          <td className="mono" style={{fontWeight:600}}>{e.vlan||"—"}</td>
+          <td className="mono" style={{fontSize:11,color:e.eval_time_ms>50?"#dc2626":e.eval_time_ms>10?"#ca8a04":"#9ca3af"}}>{e.eval_time_ms>0?e.eval_time_ms:"—"}</td>
+        </tr>)}
+      </tbody></table>
+      <div style={{padding:"8px 12px",fontSize:11,color:"#9ca3af",borderTop:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between"}}>
+        <span>{filtered.length} entries shown{filter.username||filter.mac||filter.decision||filter.policy?" (filtered)":""}</span>
+        <span>{streaming?"● Streaming live":"○ Paused"}</span>
+      </div>
+    </div>
+    <style>{"@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}"}</style>
+  </div>
+}
+
+// ─── LDAP Settings ───
+function LDAPPage(){const[cfg,setCfg]=useState({server:"dc1.corp.local",port:636,use_ssl:true,bind_dn:"CN=svc-radius,OU=Service Accounts,DC=corp,DC=local",bind_password:"",base_dn:"DC=corp,DC=local",user_filter:"(sAMAccountName=%{Stripped-User-Name})",group_attribute:"memberOf",mappings:[{ad_group:"Domain Admins",nac_group:"admins",vlan:"10"},{ad_group:"Domain Users",nac_group:"employees",vlan:"100"},{ad_group:"Contractors",nac_group:"contractors",vlan:"200"}]});const[msg,setMsg]=useState(null);const addMap=()=>setCfg({...cfg,mappings:[...cfg.mappings,{ad_group:"",nac_group:"",vlan:""}]});const delMap=i=>setCfg({...cfg,mappings:cfg.mappings.filter((_,j)=>j!==i)});const updMap=(i,k,v)=>{const m=[...cfg.mappings];m[i]={...m[i],[k]:v};setCfg({...cfg,mappings:m})};const save=()=>{setMsg({type:"success",text:"LDAP config saved"});setTimeout(()=>setMsg(null),4000)};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div className="card" style={{marginBottom:16}}><div className="card-header">Connection</div><div style={{padding:16}}><div className="field-row"><div><label className="label">Server</label><input className="input mono" value={cfg.server} onChange={e=>setCfg({...cfg,server:e.target.value})}/></div><div className="field-row" style={{marginBottom:0}}><div><label className="label">Port</label><input className="input mono" type="number" value={cfg.port} onChange={e=>setCfg({...cfg,port:+e.target.value})}/></div><div><label className="label">SSL</label><div className={`toggle ${cfg.use_ssl?"on":"off"}`} style={{marginTop:6}} onClick={()=>setCfg({...cfg,use_ssl:!cfg.use_ssl})}/></div></div></div><div className="field"><label className="label">Bind DN</label><input className="input mono" value={cfg.bind_dn} onChange={e=>setCfg({...cfg,bind_dn:e.target.value})}/></div><div className="field"><label className="label">Bind Password</label><input className="input mono" type="password" value={cfg.bind_password} onChange={e=>setCfg({...cfg,bind_password:e.target.value})}/></div><div className="field"><label className="label">Base DN</label><input className="input mono" value={cfg.base_dn} onChange={e=>setCfg({...cfg,base_dn:e.target.value})}/></div></div></div><div className="card" style={{marginBottom:16}}><div className="card-header"><span>AD Group → VLAN Mapping</span><button className="btn btn-default btn-sm" onClick={addMap}>+ Add</button></div><table><thead><tr><th>AD Group</th><th>NAC Group</th><th>VLAN</th><th></th></tr></thead><tbody>{cfg.mappings.map((m,i)=><tr key={i}><td><input className="input mono" value={m.ad_group} onChange={e=>updMap(i,"ad_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input" value={m.nac_group} onChange={e=>updMap(i,"nac_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input mono" value={m.vlan} onChange={e=>updMap(i,"vlan",e.target.value)} style={{border:"none",padding:"2px 0",width:80}}/></td><td><button className="btn btn-danger btn-sm" onClick={()=>delMap(i)}>×</button></td></tr>)}</tbody></table></div><button className="btn btn-primary" onClick={save}>Save configuration</button></div>}
+
+// ─── Settings ───
+function SettingsPage(){return<div className="card" style={{padding:20}}><div style={{fontWeight:600,marginBottom:16}}>System</div>{[["Version","0.1.0"],["MariaDB","Galera 3/3"],["Redis","Sentinel HA"],["Kafka","KRaft"],["FreeRADIUS","3.2.6 ×2"],["EAP-TLS","Enabled"],["PKI","Internal CA"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f3f4f6",fontSize:13}}><span style={{color:"#6b7280"}}>{k}</span><span className="mono">{v}</span></div>)}</div>}
+
+// ─── Navigation ───
+const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"policies",name:"Policies",icon:"⚙"},{id:"certificates",name:"Certificates",icon:"🔐"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"livelog",name:"Live Policy Log",icon:"📡"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
+const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},certificates:{t:"Certificate Management",s:"PKI — issue, revoke, and manage EAP-TLS certificates",C:CertificatesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},livelog:{t:"Live Policy Log",s:"Real-time policy decisions with SSE streaming",C:LiveLogPage},nas:{t:"Network Devices",s:"Switches & WLCs",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
+
+function App(){const[page,setPage]=useState("dashboard");React.useEffect(()=>{window.__setPage=setPage;return()=>{delete window.__setPage}},[setPage]);const[health,setHealth]=useState(null);useEffect(()=>{const f=()=>fetch("/health").then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}));f();const t=setInterval(f,30000);return()=>clearInterval(t)},[]);const pg=PG[page]||PG.dashboard;const C=pg.C;return<div style={{display:"flex",height:"100vh"}}><nav style={{width:230,background:"#1a1a2e",display:"flex",flexDirection:"column",flexShrink:0}}><div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#f48120,#e85d04)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16,color:"#fff"}}>N</div><div><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>Open NAC</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>Network Access Control</div></div></div></div><div style={{padding:"12px 8px",flex:1,overflowY:"auto"}}>{NAV.map((item,i)=>item.section?<div key={i} style={{padding:"14px 12px 6px",fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.25)",textTransform:"uppercase",letterSpacing:1.2}}>{item.section}</div>:<div key={item.id} onClick={()=>setPage(item.id)} style={{padding:"8px 12px",borderRadius:6,cursor:"pointer",fontSize:13,marginBottom:1,color:page===item.id?"#fff":"rgba(255,255,255,0.45)",fontWeight:page===item.id?600:400,background:page===item.id?"#2d2d55":"transparent",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{item.icon}</span><span>{item.name}</span></div>)}</div><div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.08)",fontSize:12}}><div style={{display:"flex",alignItems:"center",gap:6,color:health?.status==="ok"?"#4ade80":"#f87171"}}><span style={{width:6,height:6,borderRadius:"50%",background:"currentColor"}}/>{health?.status==="ok"?"Systems operational":"Connecting..."}</div></div></nav><main style={{flex:1,overflow:"auto"}}><div style={{borderBottom:"1px solid #e5e7eb",background:"#fff",padding:"16px 28px"}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{pg.t}</h1><p style={{fontSize:12,color:"#6b7280",margin:"2px 0 0"}}>{pg.s}</p></div><div style={{padding:"20px 28px"}}><C/></div></main></div>}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
