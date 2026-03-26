@@ -26,6 +26,7 @@ from app.api import (
     auth_log,
     certificates,
     live_log,
+    posture_admin,
 )
 
 logging.basicConfig(
@@ -78,6 +79,7 @@ app.include_router(coa.router, prefix="/api/v1", tags=["CoA"])
 app.include_router(auth_log.router, prefix="/api/v1", tags=["Logs"])
 app.include_router(certificates.router, prefix="/api/v1", tags=["Certificates"])
 app.include_router(live_log.router, prefix="/api/v1", tags=["Live Log"])
+app.include_router(posture_admin.router, prefix="/api/v1", tags=["Posture"])
 
 
 @app.get("/health")

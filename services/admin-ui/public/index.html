@@ -618,14 +618,190 @@ function LiveLogPage(){
 }
 
 // ─── LDAP Settings ───
+// ═══════════════════════════════════════════════════════════════
+// POSTURE — ISE-style Conditions, Requirements, Policies
+// ═══════════════════════════════════════════════════════════════
+
+function PosturePage(){
+  const[tab,setTab]=useState("policies");
+  const[conditions,setConditions]=useState(null);
+  const[requirements,setRequirements]=useState(null);
+  const[policies,setPolicies]=useState(null);
+  const[stats,setStats]=useState(null);
+  const[editing,setEditing]=useState(null);
+  const[editType,setEditType]=useState("");
+  const[form,setForm]=useState({});
+  const[msg,setMsg]=useState(null);
+
+  const load=()=>{
+    api("/posture/conditions").then(setConditions);
+    api("/posture/requirements").then(setRequirements);
+    api("/posture/policies").then(setPolicies);
+    api("/posture/stats").then(setStats);
+  };
+  useEffect(()=>{load()},[]);
+
+  const save=async()=>{
+    let path,body={...form};
+    if(editType==="condition"){
+      path="/posture/conditions";
+      if(typeof body.os_types==="string")try{body.os_types=JSON.parse(body.os_types)}catch(e){body.os_types=["windows","macos","linux"]}
+    }else if(editType==="requirement"){
+      path="/posture/requirements";
+      if(typeof body.os_types==="string")try{body.os_types=JSON.parse(body.os_types)}catch(e){}
+      if(typeof body.conditions==="string")try{body.conditions=JSON.parse(body.conditions)}catch(e){}
+      if(typeof body.remediation==="string")try{body.remediation=JSON.parse(body.remediation)}catch(e){}
+    }else{
+      path="/posture/policies";
+      if(typeof body.identity_match==="string")try{body.identity_match=JSON.parse(body.identity_match)}catch(e){}
+      if(typeof body.requirements==="string")try{body.requirements=JSON.parse(body.requirements)}catch(e){}
+    }
+    const r=editing==="new"?await api(path,{method:"POST",body:JSON.stringify(body)}):await api(`${path}/${editing}`,{method:"PUT",body:JSON.stringify(body)});
+    setMsg({type:r?.error?"error":"success",text:r?.error||"Saved"});
+    setEditing(null);load();setTimeout(()=>setMsg(null),3000);
+  };
+
+  const del=async(type,id,name)=>{
+    if(!confirm(`Delete "${name}"?`))return;
+    const paths={condition:"/posture/conditions",requirement:"/posture/requirements",policy:"/posture/policies"};
+    await api(`${paths[type]}/${id}`,{method:"DELETE"});load();
+  };
+
+  const s=stats||{};
+  const catIcons={antivirus:"🛡",firewall:"🔥",disk_encryption:"🔒",patches:"📦",os_version:"💻",application:"📱",service:"⚙",custom:"🔧",registry:"📝",file:"📄"};
+  const sevColors={critical:"red",warning:"yellow",info:"blue"};
+
+  return<div>
+    {msg&&<div className={`alert alert-${msg.type}`}><span>{msg.text}</span><span onClick={()=>setMsg(null)} style={{cursor:"pointer",fontWeight:600}}>×</span></div>}
+
+    {/* Stats */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}}>
+      {[["Compliant",s.compliant||0,"#16a34a"],["Non-compliant",s.non_compliant||0,"#dc2626"],["Unknown",s.unknown||0,"#6b7280"],["Exempt",s.exempt||0,"#2563eb"],["Total",s.total||0,"#374151"]].map(([l,v,c])=>
+        <div key={l} className="card" style={{padding:12,textAlign:"center"}}><div style={{fontSize:10,color:"#6b7280"}}>{l}</div><div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div></div>)}
+    </div>
+
+    {/* ISE-style tabs */}
+    <div style={{display:"flex",borderBottom:"2px solid #e5e7eb",marginBottom:16}}>
+      {[["policies","Posture Policies"],["requirements","Requirements"],["conditions","Conditions"]].map(([k,l])=>
+        <div key={k} onClick={()=>setTab(k)} style={{padding:"10px 20px",fontSize:13,fontWeight:tab===k?600:400,cursor:"pointer",color:tab===k?"#f48120":"#6b7280",borderBottom:tab===k?"2px solid #f48120":"2px solid transparent",marginBottom:-2}}>{l}</div>)}
+    </div>
+
+    {/* === POSTURE POLICIES TAB === */}
+    {tab==="policies"&&<div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontSize:12,color:"#6b7280"}}>Map posture requirements to identity groups. Determines which checks apply to which users.</div>
+        <button className="btn btn-primary" onClick={()=>{setEditType("policy");setForm({name:"",description:"",priority:100,identity_match:JSON.stringify({"AD-Group":"Domain Users"},null,2),requirements:JSON.stringify(["Corporate Workstation"],null,2),action_compliant:"permit",action_non_compliant:"quarantine",reassessment_minutes:240,grace_minutes:0,enabled:true});setEditing("new")}}>+ New Policy</button>
+      </div>
+      <div className="card">{!policies?<div className="empty">Loading...</div>:<table><thead><tr><th>Pri</th><th>Policy Name</th><th>Identity Match</th><th>Requirements</th><th>Compliant</th><th>Non-compliant</th><th>Reassess</th><th>On</th><th></th></tr></thead>
+      <tbody>{(policies.items||[]).map((p,i)=><tr key={i}>
+        <td className="mono">{p.priority}</td>
+        <td style={{fontWeight:600}}>{p.name}{p.description&&<div style={{fontSize:10,color:"#9ca3af"}}>{p.description}</div>}</td>
+        <td className="mono" style={{fontSize:11,color:"#6b7280",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(p.identity_match)}</td>
+        <td>{(p.requirements||[]).map((r,j)=><span key={j} className="badge badge-blue" style={{marginRight:4,marginBottom:2}}>{r}</span>)}</td>
+        <td><span className="badge badge-green">{p.action_compliant}</span></td>
+        <td><span className="badge badge-red">{p.action_non_compliant}</span></td>
+        <td className="mono" style={{fontSize:11}}>{p.reassessment_minutes}m</td>
+        <td><div className={`toggle ${p.enabled?"on":"off"}`}/></td>
+        <td><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>{setEditType("policy");setForm({...p,identity_match:JSON.stringify(p.identity_match,null,2),requirements:JSON.stringify(p.requirements,null,2)});setEditing(p.id)}}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>del("policy",p.id,p.name)}>Del</button></div></td>
+      </tr>)}</tbody></table>}</div>
+    </div>}
+
+    {/* === REQUIREMENTS TAB === */}
+    {tab==="requirements"&&<div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontSize:12,color:"#6b7280"}}>Groups of conditions that define what "compliant" means. Each requirement bundles multiple checks + remediation.</div>
+        <button className="btn btn-primary" onClick={()=>{setEditType("requirement");setForm({name:"",description:"",os_types:JSON.stringify(["windows","macos"]),conditions:JSON.stringify(["AV Installed","Firewall Enabled"],null,2),remediation:JSON.stringify({av:"Install antivirus",firewall:"Enable firewall"},null,2),enabled:true});setEditing("new")}}>+ New Requirement</button>
+      </div>
+      <div className="card">{!requirements?<div className="empty">Loading...</div>:<table><thead><tr><th>Requirement</th><th>OS Types</th><th>Conditions</th><th>Remediation</th><th>On</th><th></th></tr></thead>
+      <tbody>{(requirements.items||[]).map((r,i)=><tr key={i}>
+        <td style={{fontWeight:600}}>{r.name}{r.description&&<div style={{fontSize:10,color:"#9ca3af"}}>{r.description}</div>}</td>
+        <td>{(r.os_types||[]).map((o,j)=><span key={j} className="badge badge-gray" style={{marginRight:3,fontSize:10}}>{o}</span>)}</td>
+        <td>{(r.conditions||[]).map((c,j)=><span key={j} className="badge badge-blue" style={{marginRight:3,marginBottom:2,fontSize:10}}>{c}</span>)}</td>
+        <td className="mono" style={{fontSize:10,color:"#6b7280",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis"}}>{JSON.stringify(r.remediation)}</td>
+        <td><div className={`toggle ${r.enabled?"on":"off"}`}/></td>
+        <td><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>{setEditType("requirement");setForm({...r,os_types:JSON.stringify(r.os_types),conditions:JSON.stringify(r.conditions,null,2),remediation:JSON.stringify(r.remediation,null,2)});setEditing(r.id)}}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>del("requirement",r.id,r.name)}>Del</button></div></td>
+      </tr>)}</tbody></table>}</div>
+    </div>}
+
+    {/* === CONDITIONS TAB === */}
+    {tab==="conditions"&&<div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontSize:12,color:"#6b7280"}}>Individual compliance checks. Each condition tests one aspect of endpoint health.</div>
+        <button className="btn btn-primary" onClick={()=>{setEditType("condition");setForm({name:"",description:"",category:"antivirus",os_types:JSON.stringify(["windows","macos"]),operator:"enabled",expected_value:"true",severity:"critical",enabled:true});setEditing("new")}}>+ New Condition</button>
+      </div>
+      <div className="card">{!conditions?<div className="empty">Loading...</div>:<table><thead><tr><th></th><th>Condition Name</th><th>Category</th><th>OS</th><th>Check</th><th>Expected</th><th>Severity</th><th>On</th><th></th></tr></thead>
+      <tbody>{(conditions.items||[]).map((c,i)=><tr key={i}>
+        <td style={{fontSize:16,textAlign:"center"}}>{catIcons[c.category]||"◆"}</td>
+        <td style={{fontWeight:500}}>{c.name}{c.description&&<div style={{fontSize:10,color:"#9ca3af"}}>{c.description}</div>}</td>
+        <td><span className="badge badge-gray">{c.category}</span></td>
+        <td style={{fontSize:10}}>{(c.os_types||[]).join(", ")}</td>
+        <td className="mono" style={{fontSize:11}}>{c.operator}</td>
+        <td className="mono" style={{fontSize:11}}>{c.expected_value}</td>
+        <td><span className={`badge badge-${sevColors[c.severity]||"gray"}`}>{c.severity}</span></td>
+        <td><div className={`toggle ${c.enabled?"on":"off"}`}/></td>
+        <td><div style={{display:"flex",gap:4}}><button className="btn btn-default btn-sm" onClick={()=>{setEditType("condition");setForm({...c,os_types:JSON.stringify(c.os_types)});setEditing(c.id)}}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>del("condition",c.id,c.name)}>Del</button></div></td>
+      </tr>)}</tbody></table>}</div>
+    </div>}
+
+    {/* === EDIT MODAL === */}
+    {editing&&<Modal title={`${editing==="new"?"Create":"Edit"} ${editType}`} onClose={()=>setEditing(null)} wide>
+      <div className="field"><label className="label">Name</label><input className="input" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+      <div className="field"><label className="label">Description</label><input className="input" value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+
+      {editType==="condition"&&<>
+        <div className="field-row">
+          <div><label className="label">Category</label><select className="input" value={form.category||""} onChange={e=>setForm({...form,category:e.target.value})}>
+            {["antivirus","firewall","disk_encryption","patches","os_version","application","registry","file","service","custom"].map(c=><option key={c} value={c}>{catIcons[c]} {c}</option>)}
+          </select></div>
+          <div><label className="label">Severity</label><select className="input" value={form.severity||""} onChange={e=>setForm({...form,severity:e.target.value})}>
+            <option value="critical">🔴 Critical (blocks access)</option><option value="warning">🟡 Warning (logged only)</option><option value="info">🔵 Info</option>
+          </select></div>
+        </div>
+        <div className="field-row">
+          <div><label className="label">Operator</label><select className="input" value={form.operator||""} onChange={e=>setForm({...form,operator:e.target.value})}>
+            {["installed","running","enabled","version_gte","version_lte","exists","not_exists","equals","greater_than","less_than"].map(o=><option key={o}>{o}</option>)}
+          </select></div>
+          <div><label className="label">Expected Value</label><input className="input mono" value={form.expected_value||""} onChange={e=>setForm({...form,expected_value:e.target.value})}/></div>
+        </div>
+        <div className="field"><label className="label">OS Types (JSON array)</label><input className="input mono" value={form.os_types||"[]"} onChange={e=>setForm({...form,os_types:e.target.value})}/></div>
+      </>}
+
+      {editType==="requirement"&&<>
+        <div className="field"><label className="label">OS Types (JSON)</label><input className="input mono" value={typeof form.os_types==="string"?form.os_types:JSON.stringify(form.os_types)} onChange={e=>setForm({...form,os_types:e.target.value})}/></div>
+        <div className="field"><label className="label">Conditions (JSON array of condition names)</label><textarea className="input mono" rows={3} style={{resize:"vertical"}} value={typeof form.conditions==="string"?form.conditions:JSON.stringify(form.conditions,null,2)} onChange={e=>setForm({...form,conditions:e.target.value})}/>{conditions&&<div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap"}}>{(conditions.items||[]).map(c=><button key={c.name} className="btn btn-default btn-sm" onClick={()=>{let cur=typeof form.conditions==="string"?JSON.parse(form.conditions):form.conditions;if(!cur.includes(c.name)){cur=[...cur,c.name];setForm({...form,conditions:JSON.stringify(cur,null,2)})}}}>{catIcons[c.category]} {c.name}</button>)}</div>}</div>
+        <div className="field"><label className="label">Remediation (JSON: key → instruction)</label><textarea className="input mono" rows={3} style={{resize:"vertical"}} value={typeof form.remediation==="string"?form.remediation:JSON.stringify(form.remediation,null,2)} onChange={e=>setForm({...form,remediation:e.target.value})}/></div>
+      </>}
+
+      {editType==="policy"&&<>
+        <div className="field-row">
+          <div><label className="label">Priority</label><input className="input" type="number" value={form.priority||100} onChange={e=>setForm({...form,priority:+e.target.value})}/></div>
+          <div><label className="label">Reassessment (minutes)</label><input className="input" type="number" value={form.reassessment_minutes||240} onChange={e=>setForm({...form,reassessment_minutes:+e.target.value})}/></div>
+        </div>
+        <div className="field"><label className="label">Identity Match (JSON: who this policy applies to)</label><textarea className="input mono" rows={2} style={{resize:"vertical"}} value={typeof form.identity_match==="string"?form.identity_match:JSON.stringify(form.identity_match,null,2)} onChange={e=>setForm({...form,identity_match:e.target.value})}/><div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{[['Domain Users','{"AD-Group":"Domain Users"}'],['Contractors','{"AD-Group":"Contractors"}'],['Workstations','{"Device-Category":"workstation"}'],['All','{}']].map(([l,v])=><button key={l} className="btn btn-default btn-sm" onClick={()=>setForm({...form,identity_match:v})}>{l}</button>)}</div></div>
+        <div className="field"><label className="label">Requirements (JSON array of requirement names)</label><textarea className="input mono" rows={2} style={{resize:"vertical"}} value={typeof form.requirements==="string"?form.requirements:JSON.stringify(form.requirements,null,2)} onChange={e=>setForm({...form,requirements:e.target.value})}/>{requirements&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(requirements.items||[]).map(r=><button key={r.name} className="btn btn-default btn-sm" onClick={()=>{let cur=typeof form.requirements==="string"?JSON.parse(form.requirements):form.requirements;if(!cur.includes(r.name)){cur=[...cur,r.name];setForm({...form,requirements:JSON.stringify(cur,null,2)})}}}>{r.name}</button>)}</div>}</div>
+        <div className="field-row">
+          <div><label className="label">Action if Compliant</label><select className="input" value={form.action_compliant||""} onChange={e=>setForm({...form,action_compliant:e.target.value})}><option value="permit">✅ Permit (production VLAN)</option><option value="continue">➡ Continue (no change)</option></select></div>
+          <div><label className="label">Action if Non-compliant</label><select className="input" value={form.action_non_compliant||""} onChange={e=>setForm({...form,action_non_compliant:e.target.value})}><option value="quarantine">🔴 Quarantine (VLAN 999)</option><option value="remediate">🟡 Remediate (redirect to portal)</option><option value="deny">⛔ Deny access</option></select></div>
+        </div>
+        <div className="field"><label className="label">Grace Period (minutes, 0 = immediate enforcement)</label><input className="input" type="number" value={form.grace_minutes||0} onChange={e=>setForm({...form,grace_minutes:+e.target.value})}/></div>
+      </>}
+
+      <div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}>
+        <button className="btn btn-green" onClick={save}>{editing==="new"?"Create":"Save"}</button>
+        <button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button>
+      </div>
+    </Modal>}
+  </div>
+}
+
 function LDAPPage(){const[cfg,setCfg]=useState({server:"dc1.corp.local",port:636,use_ssl:true,bind_dn:"CN=svc-radius,OU=Service Accounts,DC=corp,DC=local",bind_password:"",base_dn:"DC=corp,DC=local",user_filter:"(sAMAccountName=%{Stripped-User-Name})",group_attribute:"memberOf",mappings:[{ad_group:"Domain Admins",nac_group:"admins",vlan:"10"},{ad_group:"Domain Users",nac_group:"employees",vlan:"100"},{ad_group:"Contractors",nac_group:"contractors",vlan:"200"}]});const[msg,setMsg]=useState(null);const addMap=()=>setCfg({...cfg,mappings:[...cfg.mappings,{ad_group:"",nac_group:"",vlan:""}]});const delMap=i=>setCfg({...cfg,mappings:cfg.mappings.filter((_,j)=>j!==i)});const updMap=(i,k,v)=>{const m=[...cfg.mappings];m[i]={...m[i],[k]:v};setCfg({...cfg,mappings:m})};const save=()=>{setMsg({type:"success",text:"LDAP config saved"});setTimeout(()=>setMsg(null),4000)};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div className="card" style={{marginBottom:16}}><div className="card-header">Connection</div><div style={{padding:16}}><div className="field-row"><div><label className="label">Server</label><input className="input mono" value={cfg.server} onChange={e=>setCfg({...cfg,server:e.target.value})}/></div><div className="field-row" style={{marginBottom:0}}><div><label className="label">Port</label><input className="input mono" type="number" value={cfg.port} onChange={e=>setCfg({...cfg,port:+e.target.value})}/></div><div><label className="label">SSL</label><div className={`toggle ${cfg.use_ssl?"on":"off"}`} style={{marginTop:6}} onClick={()=>setCfg({...cfg,use_ssl:!cfg.use_ssl})}/></div></div></div><div className="field"><label className="label">Bind DN</label><input className="input mono" value={cfg.bind_dn} onChange={e=>setCfg({...cfg,bind_dn:e.target.value})}/></div><div className="field"><label className="label">Bind Password</label><input className="input mono" type="password" value={cfg.bind_password} onChange={e=>setCfg({...cfg,bind_password:e.target.value})}/></div><div className="field"><label className="label">Base DN</label><input className="input mono" value={cfg.base_dn} onChange={e=>setCfg({...cfg,base_dn:e.target.value})}/></div></div></div><div className="card" style={{marginBottom:16}}><div className="card-header"><span>AD Group → VLAN Mapping</span><button className="btn btn-default btn-sm" onClick={addMap}>+ Add</button></div><table><thead><tr><th>AD Group</th><th>NAC Group</th><th>VLAN</th><th></th></tr></thead><tbody>{cfg.mappings.map((m,i)=><tr key={i}><td><input className="input mono" value={m.ad_group} onChange={e=>updMap(i,"ad_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input" value={m.nac_group} onChange={e=>updMap(i,"nac_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input mono" value={m.vlan} onChange={e=>updMap(i,"vlan",e.target.value)} style={{border:"none",padding:"2px 0",width:80}}/></td><td><button className="btn btn-danger btn-sm" onClick={()=>delMap(i)}>×</button></td></tr>)}</tbody></table></div><button className="btn btn-primary" onClick={save}>Save configuration</button></div>}
 
 // ─── Settings ───
 function SettingsPage(){return<div className="card" style={{padding:20}}><div style={{fontWeight:600,marginBottom:16}}>System</div>{[["Version","0.1.0"],["MariaDB","Galera 3/3"],["Redis","Sentinel HA"],["Kafka","KRaft"],["FreeRADIUS","3.2.6 ×2"],["EAP-TLS","Enabled"],["PKI","Internal CA"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f3f4f6",fontSize:13}}><span style={{color:"#6b7280"}}>{k}</span><span className="mono">{v}</span></div>)}</div>}
 
 // ─── Navigation ───
-const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"policies",name:"Policies",icon:"⚙"},{id:"certificates",name:"Certificates",icon:"🔐"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"livelog",name:"Live Policy Log",icon:"📡"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
-const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},certificates:{t:"Certificate Management",s:"PKI — issue, revoke, and manage EAP-TLS certificates",C:CertificatesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},livelog:{t:"Live Policy Log",s:"Real-time policy decisions with SSE streaming",C:LiveLogPage},nas:{t:"Network Devices",s:"Switches & WLCs",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
+const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"policies",name:"Policies",icon:"⚙"},{id:"certificates",name:"Certificates",icon:"🔐"},{id:"posture",name:"Posture",icon:"🛡"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"livelog",name:"Live Policy Log",icon:"📡"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
+const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},posture:{t:"Posture Assessment",s:"ISE-style endpoint compliance — Conditions, Requirements, Policies",C:PosturePage},certificates:{t:"Certificate Management",s:"PKI — issue, revoke, and manage EAP-TLS certificates",C:CertificatesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},livelog:{t:"Live Policy Log",s:"Real-time policy decisions with SSE streaming",C:LiveLogPage},nas:{t:"Network Devices",s:"Switches & WLCs",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
 
 function App(){const[page,setPage]=useState("dashboard");React.useEffect(()=>{window.__setPage=setPage;return()=>{delete window.__setPage}},[setPage]);const[health,setHealth]=useState(null);useEffect(()=>{const f=()=>fetch("/health").then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}));f();const t=setInterval(f,30000);return()=>clearInterval(t)},[]);const pg=PG[page]||PG.dashboard;const C=pg.C;return<div style={{display:"flex",height:"100vh"}}><nav style={{width:230,background:"#1a1a2e",display:"flex",flexDirection:"column",flexShrink:0}}><div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#f48120,#e85d04)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16,color:"#fff"}}>N</div><div><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>Open NAC</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>Network Access Control</div></div></div></div><div style={{padding:"12px 8px",flex:1,overflowY:"auto"}}>{NAV.map((item,i)=>item.section?<div key={i} style={{padding:"14px 12px 6px",fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.25)",textTransform:"uppercase",letterSpacing:1.2}}>{item.section}</div>:<div key={item.id} onClick={()=>setPage(item.id)} style={{padding:"8px 12px",borderRadius:6,cursor:"pointer",fontSize:13,marginBottom:1,color:page===item.id?"#fff":"rgba(255,255,255,0.45)",fontWeight:page===item.id?600:400,background:page===item.id?"#2d2d55":"transparent",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{item.icon}</span><span>{item.name}</span></div>)}</div><div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.08)",fontSize:12}}><div style={{display:"flex",alignItems:"center",gap:6,color:health?.status==="ok"?"#4ade80":"#f87171"}}><span style={{width:6,height:6,borderRadius:"50%",background:"currentColor"}}/>{health?.status==="ok"?"Systems operational":"Connecting..."}</div></div></nav><main style={{flex:1,overflow:"auto"}}><div style={{borderBottom:"1px solid #e5e7eb",background:"#fff",padding:"16px 28px"}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{pg.t}</h1><p style={{fontSize:12,color:"#6b7280",margin:"2px 0 0"}}>{pg.s}</p></div><div style={{padding:"20px 28px"}}><C/></div></main></div>}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
