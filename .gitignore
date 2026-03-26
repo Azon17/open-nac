@@ -71,3 +71,4 @@ grafana-data/
 # ── Логи ──
 logs/
 *.log
+config/freeradius/mods-enabled/rest
