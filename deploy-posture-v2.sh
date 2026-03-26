@@ -5,7 +5,7 @@
 # ═══════════════════════════════════════════════════════════════
 set -e
 
-PROJ="/opt/open-nac"  # Adjust to your project root
+PROJ="/root/open-nac"
 cd "$PROJ" || { echo "Project dir not found at $PROJ"; exit 1; }
 
 echo "═══ Open NAC Posture v2 Deployment ═══"
@@ -110,19 +110,44 @@ PYEOF
 
 # ─── 5. Rebuild and restart containers ───
 echo ""
-echo "[5/5] Rebuilding containers..."
-echo "  Run these commands on the server:"
+echo "[5/5] Rebuilding and restarting containers..."
+
+echo "  Building policy-engine..."
+docker compose build policy-engine
+echo "  Starting policy-engine..."
+docker compose up -d policy-engine
+
+echo "  Building posture-engine..."
+docker compose build posture-engine
+echo "  Starting posture-engine..."
+docker compose up -d posture-engine
+
+echo "  Restarting admin-ui (nginx static files)..."
+docker compose restart admin-ui
+
 echo ""
-echo "  # Rebuild policy-engine (picks up new posture_admin.py)"
-echo "  docker compose build policy-engine"
-echo "  docker compose up -d policy-engine"
+echo "  Waiting 5s for containers to stabilize..."
+sleep 5
+
+# Health check
 echo ""
-echo "  # Rebuild posture-engine (picks up new compliance_engine.py)" 
-echo "  docker compose build posture-engine"
-echo "  docker compose up -d posture-engine"
-echo ""
-echo "  # Admin UI uses nginx to serve static files, just restart:"
-echo "  docker compose restart admin-ui"
+echo "─── Health checks ───"
+PE_STATUS=$(curl -s http://localhost:8000/health 2>/dev/null | grep -o '"status":"ok"' || echo "FAIL")
+if [ "$PE_STATUS" = '"status":"ok"' ]; then
+  echo "  ✓ Policy Engine: OK"
+else
+  echo "  ✗ Policy Engine: $PE_STATUS"
+  echo "    Check: docker compose logs policy-engine --tail 20"
+fi
+
+UI_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://localhost:443 -k 2>/dev/null || echo "000")
+if [ "$UI_STATUS" = "200" ] || [ "$UI_STATUS" = "301" ] || [ "$UI_STATUS" = "302" ]; then
+  echo "  ✓ Admin UI: OK (HTTP $UI_STATUS)"
+else
+  echo "  ✗ Admin UI: HTTP $UI_STATUS"
+  echo "    Check: docker compose logs admin-ui --tail 20"
+fi
+
 echo ""
 echo "═══ Deployment complete ═══"
 echo ""
