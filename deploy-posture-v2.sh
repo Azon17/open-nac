@@ -14,10 +14,7 @@ echo ""
 # ─── 1. Update database schema ───
 echo "[1/5] Applying extended posture schema..."
 # Use ProxySQL or direct MariaDB
-MYSQL_CMD="docker exec mariadb-1 mariadb -u root -pMyStr0ng! radius"
-# Try ProxySQL first, fallback to direct
-$MYSQL_CMD < posture_schema_v2.sql 2>/dev/null || \
-  docker exec -i mariadb-1 mariadb -u root -p'MyStr0ng!' radius < posture_schema_v2.sql
+docker exec -i nac-mariadb-1 mariadb -u root -p'MyStr0ng!' radius < posture_schema_v2.sql
 echo "  ✓ Schema updated (11 condition types, AV vendors, assessment history)"
 
 # ─── 2. Deploy compliance engine v2 ───
