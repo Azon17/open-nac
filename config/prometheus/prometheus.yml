@@ -55,6 +55,16 @@ scrape_configs:
 
 
 
+  - job_name: "profiler"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["profiler:9090"]
+
+  - job_name: "posture-engine"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["posture-engine:8000"]
+
   - job_name: "blackbox-https"
     metrics_path: /probe
     params:
