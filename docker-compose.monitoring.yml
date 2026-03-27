@@ -1,0 +1,184 @@
+# ============================================================================
+# Open NAC — Monitoring Stack (docker-compose overlay)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# ============================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # --------------------------------------------------------------------------
+  # Prometheus
+  # --------------------------------------------------------------------------
+  prometheus:
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Alertmanager
+  # --------------------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: nac-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    networks:
+      nac-mgmt:
+    restart: unless-stopped
+    logging: *default-logging
+
+  # --------------------------------------------------------------------------
+  # Grafana
+  # --------------------------------------------------------------------------
+  grafana:
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-MyStr0ng!}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://10.10.10.173:3000
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SECURITY_COOKIE_SAMESITE=none
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # mysqld_exporter — .my.cnf for auth
+  # --------------------------------------------------------------------------
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: nac-mysqld-exporter
+    volumes:
+      - ./config/prometheus/mysqld-exporter.cnf:/.my.cnf:ro
+    ports:
+      - "9104:9104"
+    command:
+      - "--config.my-cnf=/.my.cnf"
+      - "--collect.global_status"
+      - "--collect.global_variables"
+      - "--collect.info_schema.innodb_metrics"
+      - "--collect.info_schema.processlist"
+      - "--collect.slave_status"
+      - "--collect.info_schema.tables"
+      - "--collect.perf_schema.file_events"
+      - "--collect.perf_schema.eventswaits"
+      - "--collect.auto_increment.columns"
+      - "--collect.binlog_size"
+      - "--collect.engine_innodb_status"
+      - "--collect.heartbeat"
+      - "--web.listen-address=:9104"
+    networks:
+      nac-data:
+      nac-mgmt:
+    depends_on:
+      mariadb-1:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # --------------------------------------------------------------------------
+  # redis_exporter — single master
+  # --------------------------------------------------------------------------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: nac-redis-exporter
+    environment:
+      REDIS_ADDR: "redis://redis-1:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-MyStr0ng!}"
+    ports:
+      - "9121:9121"
+    networks:
+      nac-data:
+      nac-mgmt:
+    depends_on:
+      redis-1:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # --------------------------------------------------------------------------
+  # kafka_exporter
+  # --------------------------------------------------------------------------
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: nac-kafka-exporter
+    command:
+      - "--kafka.server=kafka:9092"
+      - "--web.listen-address=:9308"
+      - "--topic.filter=.*"
+      - "--group.filter=.*"
+    ports:
+      - "9308:9308"
+    networks:
+      nac-data:
+      nac-mgmt:
+    depends_on:
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # --------------------------------------------------------------------------
+  # freeradius_exporter
+  # --------------------------------------------------------------------------
+  freeradius-exporter:
+    build:
+      context: ./services/freeradius-exporter
+      dockerfile: Dockerfile
+    image: opennac/freeradius-exporter:latest
+    container_name: nac-freeradius-exporter
+    command:
+      - "--radius.address=freeradius-1:18121"
+      - "--radius.secret=${RADIUS_SECRET:-MyStr0ng!}"
+      - "--web.listen-address=:9812"
+    ports:
+      - "9812:9812"
+    networks:
+      nac-core:
+      nac-mgmt:
+    depends_on:
+      freeradius-1:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # --------------------------------------------------------------------------
+  # blackbox_exporter
+  # --------------------------------------------------------------------------
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: nac-blackbox-exporter
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./config/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      nac-core:
+      nac-mgmt:
+      nac-data:
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  prometheus-data:
+  grafana-data:

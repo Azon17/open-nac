@@ -1,0 +1,95 @@
+# ============================================================================
+# Open NAC — Alertmanager Configuration
+# ============================================================================
+global:
+  resolve_timeout: 5m
+  # Uncomment and configure SMTP for email alerts:
+  # smtp_smarthost: "smtp.example.com:587"
+  # smtp_from: "opennac-alerts@example.com"
+  # smtp_auth_username: "alerts@example.com"
+  # smtp_auth_password: "MyStr0ng!"
+  # smtp_require_tls: true
+
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# ---------------------------------------------------------------------------
+# Routing tree
+# ---------------------------------------------------------------------------
+route:
+  group_by: ["alertname", "component"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: "default-webhook"
+
+  routes:
+    # Critical alerts — immediate, shorter repeat
+    - match:
+        severity: critical
+      receiver: "critical-channel"
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # RADIUS-specific alerts → dedicated channel
+    - match:
+        component: radius
+      receiver: "radius-team"
+      group_by: ["alertname"]
+
+    # Database alerts
+    - match:
+        component: database
+      receiver: "db-team"
+      group_by: ["alertname"]
+
+    # Certificate alerts
+    - match:
+        component: certificates
+      receiver: "cert-channel"
+      repeat_interval: 12h
+
+# ---------------------------------------------------------------------------
+# Inhibition rules — suppress lower-severity if critical is already firing
+# ---------------------------------------------------------------------------
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ["alertname", "instance"]
+
+# ---------------------------------------------------------------------------
+# Receivers
+# ---------------------------------------------------------------------------
+receivers:
+  - name: "default-webhook"
+    webhook_configs:
+      - url: "http://admin-ui:443/api/v1/alerts/webhook"
+        send_resolved: true
+        max_alerts: 10
+
+  - name: "critical-channel"
+    webhook_configs:
+      - url: "http://admin-ui:443/api/v1/alerts/webhook"
+        send_resolved: true
+    # Uncomment for email:
+    # email_configs:
+    #   - to: "noc-team@example.com"
+    #     send_resolved: true
+
+  - name: "radius-team"
+    webhook_configs:
+      - url: "http://admin-ui:443/api/v1/alerts/webhook"
+        send_resolved: true
+
+  - name: "db-team"
+    webhook_configs:
+      - url: "http://admin-ui:443/api/v1/alerts/webhook"
+        send_resolved: true
+
+  - name: "cert-channel"
+    webhook_configs:
+      - url: "http://admin-ui:443/api/v1/alerts/webhook"
+        send_resolved: true

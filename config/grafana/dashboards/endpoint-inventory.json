@@ -1,0 +1,170 @@
+{
+  "uid": "opennac-endpoint-inventory",
+  "title": "Endpoint Inventory",
+  "description": "Open NAC — Connected endpoints, device profiling, posture compliance",
+  "tags": ["opennac", "endpoints", "inventory", "posture"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Connected Endpoints",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "policy_engine_connected_endpoints", "legendFormat": "Connected" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": { "graphMode": "area" }
+    },
+    {
+      "id": 2,
+      "title": "Endpoints by Auth Status",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "policy_engine_endpoints_by_status{status=\"authenticated\"}", "legendFormat": "Authenticated" },
+        { "expr": "policy_engine_endpoints_by_status{status=\"pending\"}", "legendFormat": "Pending" },
+        { "expr": "policy_engine_endpoints_by_status{status=\"rejected\"}", "legendFormat": "Rejected" },
+        { "expr": "policy_engine_endpoints_by_status{status=\"quarantined\"}", "legendFormat": "Quarantined" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Profiled Device Types",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "profiler_devices_by_type", "legendFormat": "{{ device_type }}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Posture Compliance %",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 * posture_engine_compliant_endpoints / (posture_engine_compliant_endpoints + posture_engine_noncompliant_endpoints + 0.001)",
+          "legendFormat": "Compliant %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "yellow", "value": 85 },
+              { "color": "green", "value": 95 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Non-Compliant Endpoints",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 4 },
+      "targets": [
+        { "expr": "posture_engine_noncompliant_endpoints", "legendFormat": "Non-Compliant" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "New Endpoints Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "rate(policy_engine_new_endpoints_total[1h]) * 3600", "legendFormat": "New Endpoints/hr" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60 }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Auth Events by VLAN",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "policy_engine_auth_by_vlan", "legendFormat": "VLAN {{ vlan }}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Profiler — Classification Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "rate(profiler_classifications_total[5m])", "legendFormat": "Classifications/s" },
+        { "expr": "rate(profiler_reclassifications_total[5m])", "legendFormat": "Re-classifications/s" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops" } }
+    },
+    {
+      "id": 21,
+      "title": "Posture Assessment — Pass/Fail",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 16 },
+      "targets": [
+        { "expr": "rate(posture_engine_assessments_total{result=\"pass\"}[5m])", "legendFormat": "Pass/s" },
+        { "expr": "rate(posture_engine_assessments_total{result=\"fail\"}[5m])", "legendFormat": "Fail/s" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Fail/s" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "title": "Policy Decisions/sec",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        { "expr": "rate(policy_engine_requests_total[5m])", "legendFormat": "Decisions/s" },
+        { "expr": "rate(policy_engine_requests_total{status=~\"5..\"}[5m])", "legendFormat": "Errors/s" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Errors/s" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 39
+}

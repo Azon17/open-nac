@@ -1,0 +1,92 @@
+# ============================================================================
+# Open NAC — RADIUS Alert Rules
+# Path: config/prometheus/alerts/radius.rules.yml
+# ============================================================================
+groups:
+
+  - name: radius
+    rules:
+      - alert: RadiusAuthFailureSpike
+        expr: |
+          (
+            rate(freeradius_total_access_rejects[5m])
+            / (rate(freeradius_total_access_accepts[5m]) + rate(freeradius_total_access_rejects[5m]) + 0.001)
+          ) > 0.3
+        for: 3m
+        labels:
+          severity: warning
+          component: radius
+        annotations:
+          summary: "RADIUS reject rate >30%: {{ $value | printf \"%.1f\" }}%"
+          description: "Possible brute-force attack or misconfigured supplicants."
+
+      - alert: RadiusAuthFailureCritical
+        expr: |
+          (
+            rate(freeradius_total_access_rejects[5m])
+            / (rate(freeradius_total_access_accepts[5m]) + rate(freeradius_total_access_rejects[5m]) + 0.001)
+          ) > 0.6
+        for: 2m
+        labels:
+          severity: critical
+          component: radius
+        annotations:
+          summary: "RADIUS reject rate >60% — possible attack or backend failure"
+
+      - alert: RadiusHighLatency
+        expr: freeradius_response_time_seconds{quantile="0.95"} > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: radius
+        annotations:
+          summary: "RADIUS p95 latency >2s: {{ $value | printf \"%.2f\" }}s"
+
+      - alert: RadiusDown
+        expr: up{job="freeradius"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: radius
+        annotations:
+          summary: "FreeRADIUS exporter unreachable"
+
+      - alert: RadiusNoAuthentications
+        expr: rate(freeradius_total_access_requests[10m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          component: radius
+        annotations:
+          summary: "No RADIUS auth requests in 15 minutes"
+
+  - name: policy-engine
+    rules:
+      - alert: PolicyEngineDown
+        expr: up{job="policy-engine"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: policy
+        annotations:
+          summary: "Policy Engine is unreachable"
+
+      - alert: PolicyEngineHighLatency
+        expr: histogram_quantile(0.95, rate(policy_engine_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: policy
+        annotations:
+          summary: "Policy Engine p95 latency >1s"
+
+      - alert: PolicyEngineErrorRate
+        expr: |
+          rate(policy_engine_requests_total{status=~"5.."}[5m])
+          / rate(policy_engine_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: policy
+        annotations:
+          summary: "Policy Engine 5xx error rate >5%"

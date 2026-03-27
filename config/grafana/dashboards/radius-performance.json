@@ -1,0 +1,224 @@
+{
+  "uid": "opennac-radius-perf",
+  "title": "RADIUS Performance",
+  "description": "Open NAC — FreeRADIUS auth/acct metrics (ISE Live Authentications equivalent)",
+  "tags": ["opennac", "radius", "authentication"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "interval",
+        "type": "interval",
+        "current": { "value": "1m" },
+        "options": [
+          { "text": "15s", "value": "15s" },
+          { "text": "1m", "value": "1m" },
+          { "text": "5m", "value": "5m" }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Authentication Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(freeradius_total_access_accepts[5m])",
+          "legendFormat": "Accepts/s"
+        },
+        {
+          "expr": "rate(freeradius_total_access_rejects[5m])",
+          "legendFormat": "Rejects/s"
+        },
+        {
+          "expr": "rate(freeradius_total_access_requests[5m])",
+          "legendFormat": "Requests/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "pointSize": 5,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Rejects/s" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Accepts/s" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Reject Rate %",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 * rate(freeradius_total_access_rejects[5m]) / (rate(freeradius_total_access_accepts[5m]) + rate(freeradius_total_access_rejects[5m]) + 0.001)",
+          "legendFormat": "Reject %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "orange", "value": 30 },
+              { "color": "red", "value": 60 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Auth Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(freeradius_response_time_seconds_bucket[5m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(freeradius_response_time_seconds_bucket[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(freeradius_response_time_seconds_bucket[5m]))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Total Auths Today",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        {
+          "expr": "increase(freeradius_total_access_requests[24h])",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Current Auth/sec",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 },
+      "targets": [
+        {
+          "expr": "rate(freeradius_total_access_requests[1m])",
+          "legendFormat": "auth/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Accounting Requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(freeradius_total_accounting_requests[5m])",
+          "legendFormat": "Acct Start/Stop/Update /s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60 }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Auth Failures by Type",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "increase(freeradius_total_access_rejects[1h])",
+          "legendFormat": "Access-Reject"
+        },
+        {
+          "expr": "increase(freeradius_total_access_challenges[1h])",
+          "legendFormat": "Access-Challenge"
+        },
+        {
+          "expr": "increase(freeradius_total_auth_dropped_requests[1h])",
+          "legendFormat": "Dropped"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "RADIUS Queue Depth",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "freeradius_queue_len_internal",
+          "legendFormat": "Internal Queue"
+        },
+        {
+          "expr": "freeradius_queue_len_proxy",
+          "legendFormat": "Proxy Queue"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 20 }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39
+}

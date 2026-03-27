@@ -72,3 +72,17 @@ grafana-data/
 logs/
 *.log
 config/freeradius/mods-enabled/rest
+
+# Backups & temp
+*.bak.*
+*.tar.gz
+patch-*.sh
+deploy-*.sh
+DashboardPage.jsx
+
+# Backups & temp
+*.bak.*
+*.tar.gz
+patch-*.sh
+deploy-*.sh
+DashboardPage.jsx

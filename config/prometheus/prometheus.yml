@@ -1,9 +1,93 @@
+# ============================================================================
+# Open NAC — Prometheus Configuration
+# Path: config/prometheus/prometheus.yml
+# ============================================================================
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: "opennac-prod"
+    environment: "production"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+rule_files:
+  - "/etc/prometheus/alerts/*.rules.yml"
+
 scrape_configs:
-  - job_name: prometheus
+
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
-  - job_name: node
+      - targets: ["localhost:9090"]
+
+  - job_name: "node-exporter"
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ["node-exporter:9100"]
+        labels:
+          instance: "opennac-host"
+
+  - job_name: "mariadb-galera"
+    static_configs:
+      - targets: ["mysqld-exporter:9104"]
+        labels:
+          cluster: "galera"
+
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka-exporter:9308"]
+
+  - job_name: "freeradius"
+    static_configs:
+      - targets: ["freeradius-exporter:9812"]
+
+  - job_name: "policy-engine"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["policy-engine:8000"]
+
+
+
+  - job_name: "blackbox-https"
+    metrics_path: /probe
+    params:
+      module: [https_cert]
+    static_configs:
+      - targets:
+          - "https://10.10.10.173:443"
+          - "https://10.10.10.173:3000"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: "blackbox-tcp"
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - "mariadb-1:3306"
+          - "mariadb-2:3306"
+          - "mariadb-3:3306"
+          - "redis-1:6379"
+          - "kafka:9092"
+          - "policy-engine:8000"
+          - "tacacs:49"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
