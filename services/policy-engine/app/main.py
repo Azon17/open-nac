@@ -1,59 +1,48 @@
 """
 Open NAC — Policy Engine (FastAPI)
-Центральный сервис: авторизация, профилирование, события, Admin API.
+ISE-Style Policy Module — Main Application
 """
 
-import os
 import logging
-from contextlib import asynccontextmanager
+import os
 
+import aiomysql
+import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import engine, Base
-from app.core.redis_client import redis_pool
-from app.core.kafka_producer import kafka_producer
-from app.api import (
-    authorize,
-    endpoints,
-    policies,
-    profiling,
-    events,
-    network_devices,
-    guest_accounts,
-    dashboard,
-    coa,
-    auth_log,
-    certificates,
-    live_log,
-    posture_admin,
-)
+from app.api.policy_routes import router as policy_router, init_dependencies
+from app.api.authorize import router as authorize_router
 
+# ─────────────────────────────────────────────
+# Logging
+# ─────────────────────────────────────────────
 logging.basicConfig(
-    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper()),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 )
-logger = logging.getLogger("nac.main")
+logger = logging.getLogger("main")
 
+# ─────────────────────────────────────────────
+# Configuration
+# ─────────────────────────────────────────────
+DB_HOST = os.getenv("DB_HOST", "mariadb-node1")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_USER = os.getenv("DB_USER", "nac_user")
+DB_PASS = os.getenv("DB_PASS", "MyStr0ng!")
+DB_NAME = os.getenv("DB_NAME", "open_nac")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting Open NAC Policy Engine...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await kafka_producer.start()
-    await redis_pool.initialize()
-    logger.info("Policy Engine ready on :8000")
-    yield
-    await kafka_producer.stop()
-    await redis_pool.close()
-    await engine.dispose()
+REDIS_HOST = os.getenv("REDIS_HOST", "redis-node1")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASS = os.getenv("REDIS_PASS", "MyStr0ng!")
 
-
+# ─────────────────────────────────────────────
+# Application
+# ─────────────────────────────────────────────
 app = FastAPI(
-    title="Open NAC Policy Engine",
-    version="0.1.0",
-    lifespan=lifespan,
+    title="Open NAC — Policy Engine",
+    description="ISE-Style 3-Level Policy Evaluation Engine",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -64,24 +53,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# RADIUS-facing (FreeRADIUS rlm_rest вызывает эти endpoints)
-app.include_router(authorize.router, prefix="/api/v1", tags=["RADIUS"])
-app.include_router(profiling.router, prefix="/api/v1", tags=["RADIUS"])
-app.include_router(events.router, prefix="/api/v1", tags=["RADIUS"])
+# Include routers
+app.include_router(policy_router)
+app.include_router(authorize_router)
 
-# Admin UI
-app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
-app.include_router(endpoints.router, prefix="/api/v1", tags=["Endpoints"])
-app.include_router(policies.router, prefix="/api/v1", tags=["Policies"])
-app.include_router(network_devices.router, prefix="/api/v1", tags=["NAS"])
-app.include_router(guest_accounts.router, prefix="/api/v1", tags=["Guest"])
-app.include_router(coa.router, prefix="/api/v1", tags=["CoA"])
-app.include_router(auth_log.router, prefix="/api/v1", tags=["Logs"])
-app.include_router(certificates.router, prefix="/api/v1", tags=["Certificates"])
-app.include_router(live_log.router, prefix="/api/v1", tags=["Live Log"])
-app.include_router(posture_admin.router, prefix="/api/v1", tags=["Posture"])
+
+@app.on_event("startup")
+async def startup():
+    logger.info("Starting Policy Engine v2.0 (ISE-style)...")
+
+    # MariaDB pool
+    pool = await aiomysql.create_pool(
+        host=DB_HOST, port=DB_PORT,
+        user=DB_USER, password=DB_PASS,
+        db=DB_NAME, charset="utf8mb4",
+        minsize=2, maxsize=10,
+        autocommit=True,
+    )
+    logger.info(f"MariaDB pool created: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+
+    # Redis
+    redis_client = redis.Redis(
+        host=REDIS_HOST, port=REDIS_PORT,
+        password=REDIS_PASS, decode_responses=True,
+    )
+    await redis_client.ping()
+    logger.info(f"Redis connected: {REDIS_HOST}:{REDIS_PORT}")
+
+    # Initialize dependencies
+    init_dependencies(pool, redis_client)
+
+    # Pre-load policy cache
+    from app.api.policy_routes import get_evaluator
+    evaluator = get_evaluator()
+    await evaluator.load(force=True)
+    stats = evaluator.get_stats()
+    logger.info(f"Policy engine ready: {stats}")
+
+    # Store for cleanup
+    app.state.db_pool = pool
+    app.state.redis = redis_client
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    logger.info("Shutting down Policy Engine...")
+    if hasattr(app.state, "db_pool"):
+        app.state.db_pool.close()
+        await app.state.db_pool.wait_closed()
+    if hasattr(app.state, "redis"):
+        await app.state.redis.close()
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "policy-engine"}
+    return {"status": "ok", "version": "2.0.0", "module": "ISE-Style Policy Engine"}

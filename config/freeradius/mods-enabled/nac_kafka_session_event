@@ -1,0 +1,38 @@
+rest nac_kafka_session_event {
+    connect_uri = "http://policy-engine:8000"
+
+    authorize {
+        uri = "${..connect_uri}/api/v2/authorize"
+        method = "post"
+        body = "json"
+        force_to = "json"
+        timeout = 5
+    }
+
+    post-auth {
+        uri = "${..connect_uri}/api/v2/post-auth"
+        method = "post"
+        body = "json"
+        force_to = "json"
+        timeout = 5
+    }
+
+    accounting {
+        uri = "${..connect_uri}/api/v2/post-auth"
+        method = "post"
+        body = "json"
+        force_to = "json"
+        timeout = 5
+    }
+
+    pool {
+        start = 0
+        min = 0
+        max = 20
+        spare = 3
+        uses = 0
+        retry_delay = 10
+        lifetime = 0
+        idle_timeout = 60
+    }
+}

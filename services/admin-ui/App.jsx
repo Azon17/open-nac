@@ -103,20 +103,255 @@ function Loading() {
 
 function DashboardPage() {
   const [stats, setStats] = useState(null);
+  const [prom, setProm] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [authHistory, setAuthHistory] = useState([]);
+
+  // Prometheus query helper
+  const promQuery = useCallback(async (query) => {
+    try {
+      const r = await fetch(`/api/prometheus/api/v1/query?query=${encodeURIComponent(query)}`);
+      const d = await r.json();
+      if (d.status === "success" && d.data.result.length > 0) return parseFloat(d.data.result[0].value[1]);
+      return null;
+    } catch { return null; }
+  }, []);
+
+  const promQueryAll = useCallback(async (query) => {
+    try {
+      const r = await fetch(`/api/prometheus/api/v1/query?query=${encodeURIComponent(query)}`);
+      const d = await r.json();
+      if (d.status === "success") return d.data.result;
+      return [];
+    } catch { return []; }
+  }, []);
+
+  // Prometheus range query for sparkline
+  const promRange = useCallback(async (query, stepSec = 60) => {
+    try {
+      const end = Math.floor(Date.now() / 1000);
+      const start = end - 3600;
+      const r = await fetch(`/api/prometheus/api/v1/query_range?query=${encodeURIComponent(query)}&start=${start}&end=${end}&step=${stepSec}`);
+      const d = await r.json();
+      if (d.status === "success" && d.data.result.length > 0) return d.data.result[0].values.map(v => parseFloat(v[1]));
+      return [];
+    } catch { return []; }
+  }, []);
+
+  // Fetch API stats
   useEffect(() => { api("/dashboard/stats").then(setStats); }, []);
+
+  // Fetch Prometheus metrics
+  useEffect(() => {
+    async function fetchProm() {
+      const jobs = ["freeradius", "mariadb-galera", "redis", "kafka", "policy-engine", "posture-engine", "profiler", "node-exporter", "prometheus"];
+      const upResults = await promQueryAll("up");
+      const services = jobs.map(j => {
+        const match = upResults.find(r => r.metric.job === j);
+        return { name: j, up: match ? parseFloat(match.value[1]) : null };
+      });
+
+      const [cpu, mem, disk, authRate, rejectRate, galeraSize, galeraState, kafkaLag, certDays, connectedEp] = await Promise.all([
+        promQuery('100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'),
+        promQuery("(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100"),
+        promQuery('(1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100'),
+        promQuery("rate(freeradius_total_access_requests[5m])"),
+        promQuery('100 * rate(freeradius_total_access_rejects[5m]) / (rate(freeradius_total_access_accepts[5m]) + rate(freeradius_total_access_rejects[5m]) + 0.001)'),
+        promQuery("mysql_global_status_wsrep_cluster_size"),
+        promQuery("mysql_global_status_wsrep_local_state"),
+        promQuery("max(kafka_consumergroup_lag_sum)"),
+        promQuery("min((probe_ssl_earliest_cert_expiry - time()) / 86400)"),
+        promQuery("policy_engine_connected_endpoints"),
+      ]);
+
+      setProm({ services, cpu, mem, disk, authRate, rejectRate, galeraSize, galeraState, kafkaLag, certDays, connectedEp });
+
+      // Auth rate sparkline
+      const hist = await promRange("rate(freeradius_total_access_requests[1m])");
+      setAuthHistory(hist);
+
+      // Active alerts
+      try {
+        const r = await fetch("/api/prometheus/api/v1/alerts");
+        const d = await r.json();
+        if (d.status === "success") setAlerts(d.data.alerts.filter(a => a.state === "firing"));
+      } catch { /* ignore */ }
+    }
+    fetchProm();
+    const t = setInterval(fetchProm, 15000);
+    return () => clearInterval(t);
+  }, [promQuery, promQueryAll, promRange]);
 
   if (!stats) return <Loading />;
   const ep = stats.endpoints || {};
   const au = stats.auth || {};
 
+  const serviceLabel = (name) => ({
+    "freeradius": "FreeRADIUS", "mariadb-galera": "MariaDB", "redis": "Redis",
+    "kafka": "Kafka", "policy-engine": "Policy Engine", "posture-engine": "Posture",
+    "profiler": "Profiler", "node-exporter": "Host", "prometheus": "Prometheus",
+  }[name] || name);
+
+  const galeraLabel = (state) => ({ 1: "Joining", 2: "Donor", 3: "Joined", 4: "Synced" }[state] || "Unknown");
+
+  const fmtVal = (v, dec = 1) => v !== null && v !== undefined ? v.toFixed(dec) : "—";
+
+  // Mini sparkline SVG
+  const Sparkline = ({ data, color = T.orange, width = 120, height = 32 }) => {
+    if (!data || data.length < 2) return <div style={{ width, height }} />;
+    const max = Math.max(...data, 0.001);
+    const pts = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - (v / max) * (height - 4)}`).join(" ");
+    return (
+      <svg width={width} height={height} style={{ display: "block" }}>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    );
+  };
+
+  // Resource gauge bar
+  const GaugeBar = ({ label, value, thresholds = [60, 80, 90] }) => {
+    const v = value !== null ? value : 0;
+    const color = v >= thresholds[2] ? T.red : v >= thresholds[1] ? T.yellow : v >= thresholds[0] ? T.orange : T.green;
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 12, color: T.t2 }}>{label}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color, ...mono }}>{value !== null ? `${value.toFixed(1)}%` : "—"}</span>
+        </div>
+        <div style={{ height: 6, background: T.borderLight, borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${Math.min(v, 100)}%`, background: color, borderRadius: 3, transition: "width 0.5s ease" }} />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-        <Card><Metric label="Total endpoints" value={ep.total || 0} color={T.blue} /></Card>
-        <Card><Metric label="Compliant" value={ep.compliant || 0} sub={ep.total ? `${Math.round((ep.compliant||0)/ep.total*100)}%` : "—"} color={T.green} /></Card>
-        <Card><Metric label="Non-compliant" value={ep.non_compliant || 0} color={T.red} /></Card>
-        <Card><Metric label="Reject rate" value={`${au.reject_rate || 0}%`} color={T.yellow} /></Card>
+      {/* ── Row 1: Service Health Banner ── */}
+      <Card title="System health" action={
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {alerts.length > 0 && <Badge color="red" small>{alerts.length} active alert{alerts.length > 1 ? "s" : ""}</Badge>}
+          <a href="https://10.10.10.173:3000" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 12, color: T.blue, textDecoration: "none", fontWeight: 500 }}>Open Grafana →</a>
+        </div>
+      }>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+          {(prom?.services || []).map(svc => (
+            <div key={svc.name} style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 6,
+              background: svc.up === 1 ? T.greenLight : svc.up === 0 ? T.redLight : T.borderLight,
+              border: `1px solid ${svc.up === 1 ? "#bbf7d0" : svc.up === 0 ? "#fecaca" : T.border}`,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: svc.up === 1 ? T.green : svc.up === 0 ? T.red : T.t3 }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: svc.up === 1 ? T.greenDark : svc.up === 0 ? T.redDark : T.t2 }}>
+                {serviceLabel(svc.name)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ── Row 2: Key Metrics ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, margin: "20px 0" }}>
+        <Card>
+          <Metric label="Total endpoints" value={prom?.connectedEp !== null ? Math.round(prom.connectedEp) : (ep.total || 0)} color={T.blue} />
+        </Card>
+        <Card>
+          <Metric label="Compliant" value={ep.compliant || 0}
+            sub={ep.total ? `${Math.round((ep.compliant || 0) / ep.total * 100)}%` : "—"} color={T.green} />
+        </Card>
+        <Card>
+          <Metric label="Non-compliant" value={ep.non_compliant || 0} color={T.red} />
+        </Card>
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <Metric label="Auth rate" value={fmtVal(prom?.authRate)} sub="req/s" color={T.orange} />
+            <Sparkline data={authHistory} />
+          </div>
+        </Card>
+        <Card>
+          <Metric label="Reject rate" value={prom?.rejectRate !== null ? `${fmtVal(prom.rejectRate)}%` : `${au.reject_rate || 0}%`}
+            color={(prom?.rejectRate || au.reject_rate || 0) > 30 ? T.red : T.yellow} />
+        </Card>
       </div>
+
+      {/* ── Row 3: Resources / Galera / Alerts ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
+        {/* Resources */}
+        <Card title="Host resources">
+          <GaugeBar label="CPU" value={prom?.cpu} />
+          <GaugeBar label="Memory" value={prom?.mem} />
+          <GaugeBar label="Disk /" value={prom?.disk} thresholds={[60, 80, 92]} />
+        </Card>
+
+        {/* Galera + Infrastructure */}
+        <Card title="Infrastructure">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ padding: 12, borderRadius: 6, background: T.borderLight }}>
+              <div style={{ fontSize: 11, color: T.t3, marginBottom: 4 }}>Galera cluster</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: prom?.galeraSize === 3 ? T.green : T.red }}>
+                {prom?.galeraSize ?? "—"}<span style={{ fontSize: 13, fontWeight: 400, color: T.t3 }}>/3</span>
+              </div>
+              <div style={{ fontSize: 11, color: T.t3, marginTop: 2 }}>{prom?.galeraState ? galeraLabel(prom.galeraState) : ""}</div>
+            </div>
+            <div style={{ padding: 12, borderRadius: 6, background: T.borderLight }}>
+              <div style={{ fontSize: 11, color: T.t3, marginBottom: 4 }}>Kafka lag</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: (prom?.kafkaLag || 0) > 10000 ? T.red : T.text, ...mono }}>
+                {prom?.kafkaLag !== null ? Math.round(prom.kafkaLag).toLocaleString() : "—"}
+              </div>
+              <div style={{ fontSize: 11, color: T.t3, marginTop: 2 }}>messages</div>
+            </div>
+            <div style={{ padding: 12, borderRadius: 6, background: T.borderLight, gridColumn: "1 / -1" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, color: T.t3, marginBottom: 4 }}>Certificate expiry</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: (prom?.certDays || 0) < 7 ? T.red : (prom?.certDays || 0) < 30 ? T.yellow : T.green }}>
+                    {prom?.certDays !== null ? Math.round(prom.certDays) : "—"}
+                    <span style={{ fontSize: 13, fontWeight: 400, color: T.t3 }}> days</span>
+                  </div>
+                </div>
+                <Badge color={(prom?.certDays || 999) < 7 ? "red" : (prom?.certDays || 999) < 30 ? "orange" : "green"} small>
+                  {(prom?.certDays || 999) < 7 ? "Critical" : (prom?.certDays || 999) < 30 ? "Warning" : "OK"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Alerts */}
+        <Card title="Active alerts" action={
+          <Badge color={alerts.length > 0 ? "red" : "green"} small>{alerts.length > 0 ? `${alerts.length} firing` : "All clear"}</Badge>
+        } noPad>
+          {alerts.length === 0 ? (
+            <div style={{ padding: 24, textAlign: "center" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 13, color: T.t3 }}>No active alerts</div>
+            </div>
+          ) : (
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {alerts.slice(0, 8).map((a, i) => (
+                <div key={i} style={{ padding: "10px 16px", borderBottom: `1px solid ${T.borderLight}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: "50%", marginTop: 5, flexShrink: 0,
+                    background: a.labels?.severity === "critical" ? T.red : T.yellow,
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{a.labels?.alertname || "Alert"}</div>
+                    <div style={{ fontSize: 11, color: T.t3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {a.annotations?.summary || ""}
+                    </div>
+                  </div>
+                  <Badge color={a.labels?.severity === "critical" ? "red" : "orange"} small>
+                    {a.labels?.severity || "warn"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Row 4: Recent Auth + Categories (original) ── */}
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20 }}>
         <Card title="Recent authentications" noPad>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>

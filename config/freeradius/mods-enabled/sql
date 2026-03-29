@@ -3,9 +3,9 @@ sql {
     dialect = "mysql"
     server = "mariadb-1"
     port = 3306
-    login = "${env.MYSQL_USER:-radius}"
-    password = "${env.MYSQL_PASSWORD:-changeme_radius_pwd}"
-    radius_db = "${env.MYSQL_DATABASE:-radius}"
+    login = "radius"
+    password = "MyStr0ng!"
+    radius_db = "radius"
     read_clients = no
     sql_user_name = "%{User-Name}"
     pool {

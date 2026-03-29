@@ -1,7 +1,7 @@
 redis {
     server = "redis-1"
     port = 6379
-    password = "${env.REDIS_PASSWORD:-changeme_redis_pwd}"
+    password = "MyStr0ng!"
     database = 0
     pool {
         start = 5

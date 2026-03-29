@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open NAC — Policy Administration</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2233;
+            --bg-hover: #243044;
+            --bg-active: #2a3a52;
+            --border-primary: #2a3a52;
+            --border-accent: #3b82f6;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ─── Layout ─── */
+        .app { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-primary);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .sidebar-logo {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-primary);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-logo .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px rgba(16,185,129,0.5);
+        }
+        .sidebar-section {
+            padding: 16px 12px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+        }
+        .sidebar-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .sidebar-item.active {
+            background: var(--bg-active);
+            color: var(--accent-blue);
+            border-left-color: var(--accent-blue);
+            font-weight: 500;
+        }
+        .sidebar-item .badge {
+            margin-left: auto;
+            background: var(--bg-active);
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-family: var(--font-mono);
+        }
+
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .topbar {
+            height: 56px;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 16px;
+            background: var(--bg-secondary);
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .breadcrumb a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb .sep { color: var(--text-muted); }
+        .breadcrumb .current { color: var(--text-primary); font-weight: 500; }
+
+        .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* ─── Buttons ─── */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+        }
+        .btn-secondary:hover { background: var(--bg-active); }
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-icon {
+            width: 32px; height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border-primary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+        /* ─── Cards & Tables ─── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .card-header .tag {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tag-auth { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .tag-authz { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+        .tag-cond { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+        .tag-profile { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-primary);
+        }
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(42,58,82,0.5);
+            vertical-align: middle;
+        }
+        tr:hover td { background: rgba(59,130,246,0.04); }
+        tr.clickable { cursor: pointer; }
+        tr.clickable:hover td { background: rgba(59,130,246,0.08); }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.enabled { background: var(--accent-green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+        .status-dot.disabled { background: var(--accent-red); }
+
+        .priority-badge {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .hit-count {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ─── Drill-down sections ─── */
+        .policy-detail { display: flex; flex-direction: column; gap: 20px; }
+        .detail-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 4px;
+        }
+        .detail-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .detail-meta {
+            display: flex;
+            gap: 20px;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .detail-meta .meta-item { display: flex; align-items: center; gap: 6px; }
+        .detail-meta .meta-label { color: var(--text-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+
+        /* ─── Modal ─── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            width: 560px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+        .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border-primary);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* ─── Form ─── */
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--accent-blue);
+        }
+        .form-group textarea {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        /* ─── Condition builder ─── */
+        .cond-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            background: rgba(59,130,246,0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59,130,246,0.2);
+        }
+        .cond-pill.compound {
+            background: rgba(245,158,11,0.1);
+            color: var(--accent-yellow);
+            border-color: rgba(245,158,11,0.2);
+        }
+        .cond-pill .op {
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        /* ─── Profile preview ─── */
+        .profile-attrs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .attr-tag {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text-secondary);
+        }
+
+        /* ─── Toast ─── */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 200;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--accent-green); color: white; }
+        .toast.error { background: var(--accent-red); color: white; }
+
+        /* ─── Empty state ─── */
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* ─── Loading ─── */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        .spinner {
+            width: 24px; height: 24px;
+            border: 2px solid var(--border-primary);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Eval panel ─── */
+        .eval-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .eval-input, .eval-output { display: flex; flex-direction: column; gap: 10px; }
+        .eval-output .result-card {
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-primary);
+        }
+        .result-card.accept { border-color: var(--accent-green); background: rgba(16,185,129,0.05); }
+        .result-card.reject { border-color: var(--accent-red); background: rgba(239,68,68,0.05); }
+        .result-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .result-value { font-size: 14px; font-weight: 500; }
+        pre.json-output {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            overflow-x: auto;
+            color: var(--text-secondary);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app" id="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo"><span class="dot"></span> Open NAC</div>
+        <div class="sidebar-section">Policy</div>
+        <div class="sidebar-item active" onclick="navigate('policy-sets')" data-nav="policy-sets">
+            ⊞ Policy Sets <span class="badge" id="ps-count">—</span>
+        </div>
+        <div class="sidebar-section">Policy Elements</div>
+        <div class="sidebar-item" onclick="navigate('conditions')" data-nav="conditions">
+            ◈ Condition Library <span class="badge" id="cond-count">—</span>
+        </div>
+        <div class="sidebar-item" onclick="navigate('authz-profiles')" data-nav="authz-profiles">
+            ⊕ Authorization Profiles <span class="badge" id="prof-count">—</span>
+        </div>
+        <div class="sidebar-item" onclick="navigate('protocols')" data-nav="protocols">
+            ⊗ Allowed Protocols <span class="badge" id="proto-count">—</span>
+        </div>
+        <div class="sidebar-item" onclick="navigate('identity-sources')" data-nav="identity-sources">
+            ⊘ Identity Sources <span class="badge" id="is-count">—</span>
+        </div>
+        <div class="sidebar-section">Tools</div>
+        <div class="sidebar-item" onclick="navigate('evaluate')" data-nav="evaluate">
+            ▷ Policy Evaluator
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+        <div class="topbar">
+            <div class="breadcrumb" id="breadcrumb"></div>
+            <div class="topbar-actions" id="topbar-actions"></div>
+        </div>
+        <div class="content" id="content">
+            <div class="loading"><div class="spinner"></div>Loading policy data...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <span id="modal-title">Create</span>
+            <button class="btn-icon" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+        <div class="modal-footer" id="modal-footer"></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// API Client
+// ═══════════════════════════════════════════
+const API = '/api/v2/policy';
+
+async function api(path, method='GET', body=null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API + path, opts);
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`${res.status}: ${err}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+}
+
+// ═══════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════
+let state = {
+    view: 'policy-sets',
+    policySets: [],
+    currentSetId: null,
+    currentSet: null,
+    conditions: [],
+    authzProfiles: [],
+    protocols: [],
+    identitySources: [],
+};
+
+// ═══════════════════════════════════════════
+// Navigation
+// ═══════════════════════════════════════════
+function navigate(view, params={}) {
+    state.view = view;
+    Object.assign(state, params);
+    document.querySelectorAll('.sidebar-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.nav === view || (view === 'policy-set-detail' && el.dataset.nav === 'policy-sets'));
+    });
+    render();
+}
+
+// ═══════════════════════════════════════════
+// Render dispatcher
+// ═══════════════════════════════════════════
+async function render() {
+    const content = document.getElementById('content');
+    const bc = document.getElementById('breadcrumb');
+    const actions = document.getElementById('topbar-actions');
+
+    try {
+        switch (state.view) {
+            case 'policy-sets':
+                await renderPolicySets(content, bc, actions);
+                break;
+            case 'policy-set-detail':
+                await renderPolicySetDetail(content, bc, actions);
+                break;
+            case 'conditions':
+                await renderConditions(content, bc, actions);
+                break;
+            case 'authz-profiles':
+                await renderAuthzProfiles(content, bc, actions);
+                break;
+            case 'protocols':
+                await renderProtocols(content, bc, actions);
+                break;
+            case 'identity-sources':
+                await renderIdentitySources(content, bc, actions);
+                break;
+            case 'evaluate':
+                renderEvaluate(content, bc, actions);
+                break;
+        }
+    } catch(e) {
+        content.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+        console.error(e);
+    }
+}
+
+// ═══════════════════════════════════════════
+// POLICY SETS LIST
+// ═══════════════════════════════════════════
+async function renderPolicySets(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Policy Sets</span>';
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openCreatePolicySet()">+ New Policy Set</button>`;
+
+    state.policySets = await api('/policy-sets');
+    document.getElementById('ps-count').textContent = state.policySets.length;
+
+    if (!state.policySets.length) {
+        el.innerHTML = '<div class="empty-state">No policy sets configured. Create your first policy set.</div>';
+        return;
+    }
+
+    el.innerHTML = `<div class="card"><table>
+        <tr>
+            <th style="width:40px"></th>
+            <th>Name</th>
+            <th>Condition</th>
+            <th>Auth Rules</th>
+            <th>Authz Rules</th>
+            <th>Priority</th>
+            <th>Hits</th>
+            <th style="width:80px"></th>
+        </tr>
+        ${state.policySets.map(ps => `
+        <tr class="clickable" ondblclick="navigate('policy-set-detail', {currentSetId:${ps.id}})">
+            <td><span class="status-dot ${ps.enabled?'enabled':'disabled'}"></span></td>
+            <td>
+                <div style="font-weight:500">${esc(ps.name)}</div>
+                <div style="font-size:11px;color:var(--text-muted)">${esc(ps.description||'')}</div>
+            </td>
+            <td>${ps.condition_id ? `<span class="cond-pill">ID:${ps.condition_id}</span>` : ps.is_default ? '<span style="color:var(--accent-yellow);font-size:12px">★ Default</span>' : '—'}</td>
+            <td><span class="badge">${ps.auth_policy_count}</span></td>
+            <td><span class="badge">${ps.authz_policy_count}</span></td>
+            <td><span class="priority-badge">${ps.priority}</span></td>
+            <td><span class="hit-count">${formatNum(ps.hit_count)}</span></td>
+            <td>
+                <button class="btn-icon" title="Open" onclick="event.stopPropagation();navigate('policy-set-detail',{currentSetId:${ps.id}})">→</button>
+                <button class="btn-icon" title="Delete" onclick="event.stopPropagation();deletePolicySet(${ps.id})">✕</button>
+            </td>
+        </tr>`).join('')}
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// POLICY SET DETAIL (drill-down)
+// ═══════════════════════════════════════════
+async function renderPolicySetDetail(el, bc, actions) {
+    const ps = await api(`/policy-sets/${state.currentSetId}`);
+    state.currentSet = ps;
+
+    bc.innerHTML = `<a onclick="navigate('policy-sets')">Policy Sets</a> <span class="sep">›</span> <span class="current">${esc(ps.name)}</span>`;
+    actions.innerHTML = `<button class="btn btn-secondary" onclick="navigate('policy-sets')">← Back</button>`;
+
+    const authRows = (ps.authentication_policies||[]).map(r => `
+        <tr>
+            <td><span class="status-dot ${r.enabled?'enabled':'disabled'}"></span></td>
+            <td style="font-weight:500">${esc(r.name)}</td>
+            <td>${renderConditionCell(r)}</td>
+            <td>${r.identity_source ? esc(r.identity_source.name) : '—'}</td>
+            <td><span style="font-size:12px;color:${r.on_failure==='reject'?'var(--accent-red)':r.on_failure==='continue'?'var(--accent-yellow)':'var(--text-muted)'}">${r.on_failure}</span></td>
+            <td><span class="priority-badge">${r.priority}</span></td>
+            <td><span class="hit-count">${formatNum(r.hit_count)}</span></td>
+            <td>
+                <button class="btn-icon btn-sm" onclick="deleteAuthPolicy(${r.id})">✕</button>
+            </td>
+        </tr>`).join('');
+
+    const authzRows = (ps.authorization_policies||[]).map(r => `
+        <tr>
+            <td><span class="status-dot ${r.enabled?'enabled':'disabled'}"></span></td>
+            <td style="font-weight:500">${esc(r.name)}${r.is_default?' <span style="color:var(--accent-yellow);font-size:10px">★ DEFAULT</span>':''}</td>
+            <td>${renderConditionCell(r)}</td>
+            <td>${r.authorization_profile ? renderProfileBadge(r.authorization_profile) : '—'}</td>
+            <td><span class="priority-badge">${r.priority}</span></td>
+            <td><span class="hit-count">${formatNum(r.hit_count)}</span></td>
+            <td>
+                <button class="btn-icon btn-sm" onclick="deleteAuthzPolicy(${r.id})">✕</button>
+            </td>
+        </tr>`).join('');
+
+    el.innerHTML = `
+    <div class="policy-detail">
+        <div class="detail-header">
+            <h2>${esc(ps.name)}</h2>
+            <span class="status-dot ${ps.enabled?'enabled':'disabled'}"></span>
+        </div>
+        <div class="detail-meta">
+            <div class="meta-item"><span class="meta-label">Priority</span> ${ps.priority}</div>
+            <div class="meta-item"><span class="meta-label">Protocols</span> ${ps.allowed_protocols ? esc(ps.allowed_protocols.name) : '—'}</div>
+            <div class="meta-item"><span class="meta-label">Condition</span> ${ps.condition ? esc(ps.condition.name) : ps.is_default ? 'Default (catch-all)' : '—'}</div>
+            <div class="meta-item"><span class="meta-label">Hits</span> ${formatNum(ps.hit_count)}</div>
+        </div>
+
+        <!-- Authentication Policy -->
+        <div class="card">
+            <div class="card-header">
+                <span class="tag tag-auth">Authentication</span>
+                Authentication Policy
+                <div style="margin-left:auto">
+                    <button class="btn btn-sm btn-primary" onclick="openCreateAuthPolicy(${ps.id})">+ Rule</button>
+                </div>
+            </div>
+            <table>
+                <tr><th></th><th>Rule Name</th><th>Condition</th><th>Identity Source</th><th>On Failure</th><th>Priority</th><th>Hits</th><th></th></tr>
+                ${authRows || '<tr><td colspan="8" class="empty-state">No authentication rules</td></tr>'}
+            </table>
+        </div>
+
+        <!-- Authorization Policy -->
+        <div class="card">
+            <div class="card-header">
+                <span class="tag tag-authz">Authorization</span>
+                Authorization Policy
+                <div style="margin-left:auto">
+                    <button class="btn btn-sm btn-primary" onclick="openCreateAuthzPolicy(${ps.id})">+ Rule</button>
+                </div>
+            </div>
+            <table>
+                <tr><th></th><th>Rule Name</th><th>Condition</th><th>Authorization Profile</th><th>Priority</th><th>Hits</th><th></th></tr>
+                ${authzRows || '<tr><td colspan="7" class="empty-state">No authorization rules</td></tr>'}
+            </table>
+        </div>
+    </div>`;
+}
+
+function renderConditionCell(rule) {
+    if (rule.condition) {
+        const c = rule.condition;
+        if (c.condition_type === 'compound') {
+            return `<span class="cond-pill compound">${esc(c.name)}</span>`;
+        }
+        return `<span class="cond-pill">${esc(c.attribute||'')} <span class="op">${c.operator||''}</span> ${esc(c.value||'')}</span>`;
+    }
+    return '<span style="color:var(--text-muted);font-size:12px">Always</span>';
+}
+
+function renderProfileBadge(p) {
+    const parts = [];
+    if (p.access_type === 'access_reject') return `<span style="color:var(--accent-red);font-weight:500">${esc(p.name)}</span>`;
+    if (p.vlan_id) parts.push(`VLAN ${p.vlan_id}`);
+    if (p.acl_name) parts.push(p.acl_name);
+    if (p.url_redirect) parts.push('URL↗');
+    return `<span style="color:var(--accent-green);font-weight:500">${esc(p.name)}</span>
+            <div class="profile-attrs">${parts.map(x=>`<span class="attr-tag">${esc(x)}</span>`).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════
+// CONDITIONS LIST
+// ═══════════════════════════════════════════
+async function renderConditions(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Condition Library</span>';
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openCreateCondition()">+ New Condition</button>`;
+
+    state.conditions = await api('/conditions');
+    document.getElementById('cond-count').textContent = state.conditions.length;
+
+    el.innerHTML = `<div class="card"><table>
+        <tr><th></th><th>Name</th><th>Type</th><th>Definition</th><th>Category</th><th></th></tr>
+        ${state.conditions.map(c => `
+        <tr>
+            <td><span class="status-dot ${c.enabled?'enabled':'disabled'}"></span></td>
+            <td><div style="font-weight:500">${esc(c.name)}</div><div style="font-size:11px;color:var(--text-muted)">${esc(c.description||'')}</div></td>
+            <td><span class="tag ${c.condition_type==='compound'?'tag-cond':'tag-auth'}">${c.condition_type}</span></td>
+            <td>${c.condition_type==='simple'
+                ? `<span class="cond-pill">${esc(c.attribute||'')} <span class="op">${c.operator||''}</span> ${esc(c.value||'')}</span>`
+                : `<span class="cond-pill compound">${JSON.stringify(c.compound_json||{})}</span>`
+            }</td>
+            <td style="color:var(--text-muted);font-size:12px">${esc(c.category)}</td>
+            <td><button class="btn-icon btn-sm" onclick="deleteCondition(${c.id})">✕</button></td>
+        </tr>`).join('')}
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// AUTHORIZATION PROFILES LIST
+// ═══════════════════════════════════════════
+async function renderAuthzProfiles(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Authorization Profiles</span>';
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openCreateAuthzProfile()">+ New Profile</button>`;
+
+    state.authzProfiles = await api('/authorization-profiles');
+    document.getElementById('prof-count').textContent = state.authzProfiles.length;
+
+    el.innerHTML = `<div class="card"><table>
+        <tr><th></th><th>Name</th><th>Access</th><th>VLAN</th><th>ACL</th><th>Redirect</th><th>Timeout</th><th></th></tr>
+        ${state.authzProfiles.map(p => `
+        <tr>
+            <td><span class="status-dot ${p.enabled?'enabled':'disabled'}"></span></td>
+            <td><div style="font-weight:500">${esc(p.name)}</div><div style="font-size:11px;color:var(--text-muted)">${esc(p.description||'')}</div></td>
+            <td><span style="color:${p.access_type==='access_accept'?'var(--accent-green)':'var(--accent-red)'};font-weight:500">${p.access_type==='access_accept'?'ACCEPT':'REJECT'}</span></td>
+            <td>${p.vlan_id ? `<span class="attr-tag">${p.vlan_id} ${p.vlan_name?'('+esc(p.vlan_name)+')':''}</span>` : '—'}</td>
+            <td>${p.acl_name ? `<span class="attr-tag">${esc(p.acl_name)}</span>` : '—'}</td>
+            <td>${p.url_redirect ? '↗ Yes' : '—'}</td>
+            <td>${p.session_timeout ? p.session_timeout+'s' : '—'}</td>
+            <td><button class="btn-icon btn-sm" onclick="deleteAuthzProfile(${p.id})">✕</button></td>
+        </tr>`).join('')}
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// ALLOWED PROTOCOLS LIST
+// ═══════════════════════════════════════════
+async function renderProtocols(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Allowed Protocols</span>';
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openCreateProtocol()">+ New Protocol Set</button>`;
+
+    state.protocols = await api('/allowed-protocols');
+    document.getElementById('proto-count').textContent = state.protocols.length;
+
+    const eapFields = ['allow_pap','allow_chap','allow_mschap_v2','allow_peap','allow_eap_tls','allow_eap_fast','allow_eap_ttls','allow_eap_md5'];
+    const eapLabels = ['PAP','CHAP','MSCHAPv2','PEAP','EAP-TLS','EAP-FAST','EAP-TTLS','EAP-MD5'];
+
+    el.innerHTML = `<div class="card"><table>
+        <tr><th></th><th>Name</th>${eapLabels.map(l=>`<th style="text-align:center;font-size:10px">${l}</th>`).join('')}<th></th></tr>
+        ${state.protocols.map(p => `
+        <tr>
+            <td><span class="status-dot ${p.enabled?'enabled':'disabled'}"></span></td>
+            <td><div style="font-weight:500">${esc(p.name)}</div><div style="font-size:11px;color:var(--text-muted)">${esc(p.description||'')}</div></td>
+            ${eapFields.map(f=>`<td style="text-align:center">${p[f]?'<span style="color:var(--accent-green)">●</span>':'<span style="color:var(--text-muted)">○</span>'}</td>`).join('')}
+            <td><button class="btn-icon btn-sm" onclick="deleteProtocol(${p.id})">✕</button></td>
+        </tr>`).join('')}
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// IDENTITY SOURCES LIST
+// ═══════════════════════════════════════════
+async function renderIdentitySources(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Identity Sources</span>';
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openCreateIdentitySource()">+ New Source</button>`;
+
+    state.identitySources = await api('/identity-sources');
+    document.getElementById('is-count').textContent = state.identitySources.length;
+
+    const typeColors = {internal:'var(--accent-blue)',active_directory:'var(--accent-purple)',ldap:'var(--accent-cyan)',certificate:'var(--accent-green)',mab:'var(--accent-yellow)'};
+
+    el.innerHTML = `<div class="card"><table>
+        <tr><th></th><th>Name</th><th>Type</th><th>Priority</th><th></th></tr>
+        ${state.identitySources.map(s => `
+        <tr>
+            <td><span class="status-dot ${s.enabled?'enabled':'disabled'}"></span></td>
+            <td><div style="font-weight:500">${esc(s.name)}</div><div style="font-size:11px;color:var(--text-muted)">${esc(s.description||'')}</div></td>
+            <td><span style="color:${typeColors[s.source_type]||'var(--text-secondary)'};font-weight:500">${esc(s.source_type)}</span></td>
+            <td><span class="priority-badge">${s.priority}</span></td>
+            <td><button class="btn-icon btn-sm" onclick="deleteIdentitySource(${s.id})">✕</button></td>
+        </tr>`).join('')}
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// POLICY EVALUATOR (test tool)
+// ═══════════════════════════════════════════
+function renderEvaluate(el, bc, actions) {
+    bc.innerHTML = '<span class="current">Policy Evaluator</span>';
+    actions.innerHTML = '';
+
+    el.innerHTML = `
+    <div class="eval-panel">
+        <div class="eval-input">
+            <div class="card">
+                <div class="card-header">Request Attributes</div>
+                <div style="padding:16px">
+                    <div class="form-group">
+                        <label>RADIUS Attributes (JSON)</label>
+                        <textarea id="eval-input" rows="16">${JSON.stringify({
+                            "RADIUS:User-Name": "john.doe",
+                            "RADIUS:NAS-Port-Type": "Ethernet",
+                            "RADIUS:NAS-IP-Address": "10.10.10.1",
+                            "RADIUS:Calling-Station-Id": "AA:BB:CC:DD:EE:FF",
+                            "RADIUS:EAP-Type": "PEAP",
+                            "RADIUS:Service-Type": "Framed-User",
+                            "AD:memberOf": "CN=Employees,OU=Groups,DC=corp,DC=local",
+                            "Posture:Status": "Compliant"
+                        }, null, 2)}</textarea>
+                    </div>
+                    <div style="margin-top:10px">
+                        <button class="btn btn-primary" onclick="runEvaluation()">▷ Evaluate</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="eval-output" id="eval-output">
+            <div class="card">
+                <div class="card-header">Result</div>
+                <div class="empty-state">Run an evaluation to see results</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function runEvaluation() {
+    const input = document.getElementById('eval-input').value;
+    const output = document.getElementById('eval-output');
+    try {
+        const attrs = JSON.parse(input);
+        const result = await api('/evaluate', 'POST', { attributes: attrs });
+        const isAccept = result.decision === 'accept';
+
+        output.innerHTML = `
+        <div class="result-card ${isAccept?'accept':'reject'}">
+            <div class="result-label">Decision</div>
+            <div class="result-value" style="font-size:20px;color:${isAccept?'var(--accent-green)':'var(--accent-red)'}">${result.decision.toUpperCase()}</div>
+        </div>
+        <div class="card" style="padding:16px">
+            <div class="result-label">Policy Set</div>
+            <div class="result-value">${esc(result.policy_set||'—')}</div>
+        </div>
+        <div class="card" style="padding:16px">
+            <div class="result-label">Authentication Rule</div>
+            <div class="result-value">${esc(result.auth_rule||'—')}</div>
+        </div>
+        <div class="card" style="padding:16px">
+            <div class="result-label">Authorization Rule</div>
+            <div class="result-value">${esc(result.authz_rule||'—')}</div>
+        </div>
+        <div class="card" style="padding:16px">
+            <div class="result-label">RADIUS Reply Attributes</div>
+            <pre class="json-output">${JSON.stringify(result.radius_attributes, null, 2)}</pre>
+        </div>
+        <div class="card" style="padding:16px">
+            <div class="result-label">Evaluation Time</div>
+            <div class="result-value">${result.evaluation_time_ms} ms</div>
+        </div>
+        <details style="margin-top:8px">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:12px">Full JSON response</summary>
+            <pre class="json-output">${JSON.stringify(result, null, 2)}</pre>
+        </details>`;
+    } catch(e) {
+        output.innerHTML = `<div class="result-card reject"><div class="result-value">Error: ${esc(e.message)}</div></div>`;
+    }
+}
+
+// ═══════════════════════════════════════════
+// MODALS — Create forms
+// ═══════════════════════════════════════════
+function openModal(title, bodyHtml, onSave) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHtml;
+    document.getElementById('modal-footer').innerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="modal-save">Save</button>`;
+    document.getElementById('modal-save').onclick = onSave;
+    document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function openCreatePolicySet() {
+    openModal('Create Policy Set', `
+        <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Wired 802.1X"></div>
+        <div class="form-group"><label>Description</label><input id="f-desc"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Priority</label><input id="f-prio" type="number" value="100"></div>
+            <div class="form-group"><label>Condition ID</label><input id="f-cond" type="number" placeholder="optional"></div>
+        </div>
+        <div class="form-group"><label>Default (catch-all)</label><select id="f-default"><option value="false">No</option><option value="true">Yes</option></select></div>
+    `, async () => {
+        await api('/policy-sets', 'POST', {
+            name: gv('f-name'), description: gv('f-desc'),
+            priority: parseInt(gv('f-prio')), condition_id: gv('f-cond')?parseInt(gv('f-cond')):null,
+            is_default: gv('f-default')==='true'
+        });
+        closeModal(); toast('Policy set created'); render();
+    });
+}
+
+function openCreateAuthPolicy(psId) {
+    openModal('Create Authentication Rule', `
+        <div class="form-group"><label>Rule Name</label><input id="f-name" placeholder="e.g. PEAP → Active Directory"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Condition ID</label><input id="f-cond" type="number" placeholder="optional"></div>
+            <div class="form-group"><label>Identity Source ID</label><input id="f-is" type="number" placeholder="required"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>On Failure</label><select id="f-fail"><option value="reject">Reject</option><option value="continue">Continue</option><option value="drop">Drop</option></select></div>
+            <div class="form-group"><label>Priority</label><input id="f-prio" type="number" value="100"></div>
+        </div>
+    `, async () => {
+        await api(`/policy-sets/${psId}/authentication`, 'POST', {
+            name: gv('f-name'), policy_set_id: psId,
+            condition_id: gv('f-cond')?parseInt(gv('f-cond')):null,
+            identity_source_id: gv('f-is')?parseInt(gv('f-is')):null,
+            on_failure: gv('f-fail'), priority: parseInt(gv('f-prio'))
+        });
+        closeModal(); toast('Authentication rule created'); render();
+    });
+}
+
+function openCreateAuthzPolicy(psId) {
+    openModal('Create Authorization Rule', `
+        <div class="form-group"><label>Rule Name</label><input id="f-name" placeholder="e.g. Employees Compliant"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Condition ID</label><input id="f-cond" type="number" placeholder="optional"></div>
+            <div class="form-group"><label>Auth Profile ID</label><input id="f-prof" type="number" placeholder="required"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Priority</label><input id="f-prio" type="number" value="100"></div>
+            <div class="form-group"><label>Default Rule</label><select id="f-default"><option value="false">No</option><option value="true">Yes</option></select></div>
+        </div>
+    `, async () => {
+        await api(`/policy-sets/${psId}/authorization`, 'POST', {
+            name: gv('f-name'), policy_set_id: psId,
+            condition_id: gv('f-cond')?parseInt(gv('f-cond')):null,
+            authorization_profile_id: gv('f-prof')?parseInt(gv('f-prof')):null,
+            priority: parseInt(gv('f-prio')), is_default: gv('f-default')==='true'
+        });
+        closeModal(); toast('Authorization rule created'); render();
+    });
+}
+
+function openCreateCondition() {
+    openModal('Create Condition', `
+        <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Wired 802.1X"></div>
+        <div class="form-group"><label>Description</label><input id="f-desc"></div>
+        <div class="form-group"><label>Type</label><select id="f-type" onchange="toggleCondType()"><option value="simple">Simple</option><option value="compound">Compound</option></select></div>
+        <div id="simple-fields">
+            <div class="form-group"><label>Attribute</label><input id="f-attr" placeholder="e.g. RADIUS:NAS-Port-Type"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Operator</label><select id="f-op"><option>equals</option><option>not_equals</option><option>contains</option><option>not_contains</option><option>starts_with</option><option>ends_with</option><option>matches_regex</option><option>in</option><option>not_in</option></select></div>
+                <div class="form-group"><label>Value</label><input id="f-val" placeholder="e.g. Ethernet"></div>
+            </div>
+        </div>
+        <div id="compound-fields" style="display:none">
+            <div class="form-group"><label>Compound JSON</label><textarea id="f-compound" placeholder='{"operator":"AND","children":[1,2]}'></textarea></div>
+        </div>
+        <div class="form-group"><label>Category</label><select id="f-cat"><option>Network</option><option>Device</option><option>User</option><option>Posture</option><option>General</option></select></div>
+    `, async () => {
+        const isSimple = gv('f-type') === 'simple';
+        const body = {
+            name: gv('f-name'), description: gv('f-desc'),
+            condition_type: gv('f-type'), category: gv('f-cat')
+        };
+        if (isSimple) {
+            body.attribute = gv('f-attr'); body.operator = gv('f-op'); body.value = gv('f-val');
+        } else {
+            body.compound_json = JSON.parse(gv('f-compound'));
+        }
+        await api('/conditions', 'POST', body);
+        closeModal(); toast('Condition created'); render();
+    });
+}
+
+function toggleCondType() {
+    const t = gv('f-type');
+    document.getElementById('simple-fields').style.display = t==='simple'?'':'none';
+    document.getElementById('compound-fields').style.display = t==='compound'?'':'none';
+}
+
+function openCreateAuthzProfile() {
+    openModal('Create Authorization Profile', `
+        <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. VLAN100_Employee"></div>
+        <div class="form-group"><label>Description</label><input id="f-desc"></div>
+        <div class="form-group"><label>Access Type</label><select id="f-access"><option value="access_accept">Accept</option><option value="access_reject">Reject</option></select></div>
+        <div class="form-row">
+            <div class="form-group"><label>VLAN ID</label><input id="f-vlan" type="number" placeholder="e.g. 100"></div>
+            <div class="form-group"><label>VLAN Name</label><input id="f-vname" placeholder="e.g. EMPLOYEES"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>ACL Name</label><input id="f-acl" placeholder="e.g. ACL-EMPLOYEE"></div>
+            <div class="form-group"><label>Session Timeout (s)</label><input id="f-timeout" type="number"></div>
+        </div>
+        <div class="form-group"><label>URL Redirect</label><input id="f-url" placeholder="https://..."></div>
+    `, async () => {
+        await api('/authorization-profiles', 'POST', {
+            name: gv('f-name'), description: gv('f-desc'),
+            access_type: gv('f-access'),
+            vlan_id: gv('f-vlan')?parseInt(gv('f-vlan')):null,
+            vlan_name: gv('f-vname')||null,
+            acl_name: gv('f-acl')||null,
+            session_timeout: gv('f-timeout')?parseInt(gv('f-timeout')):null,
+            url_redirect: gv('f-url')||null,
+        });
+        closeModal(); toast('Authorization profile created'); render();
+    });
+}
+
+function openCreateProtocol() {
+    openModal('Create Allowed Protocols', `
+        <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. EAP-TLS Only"></div>
+        <div class="form-group"><label>Description</label><input id="f-desc"></div>
+        <div class="form-row">
+            <div class="form-group"><label>PAP</label><select id="f-pap"><option value="true">✓</option><option value="false">✗</option></select></div>
+            <div class="form-group"><label>PEAP</label><select id="f-peap"><option value="true">✓</option><option value="false">✗</option></select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>EAP-TLS</label><select id="f-tls"><option value="true">✓</option><option value="false">✗</option></select></div>
+            <div class="form-group"><label>MSCHAPv2</label><select id="f-mschap"><option value="true">✓</option><option value="false">✗</option></select></div>
+        </div>
+    `, async () => {
+        await api('/allowed-protocols', 'POST', {
+            name: gv('f-name'), description: gv('f-desc'),
+            allow_pap: gv('f-pap')==='true', allow_peap: gv('f-peap')==='true',
+            allow_eap_tls: gv('f-tls')==='true', allow_mschap_v2: gv('f-mschap')==='true',
+        });
+        closeModal(); toast('Protocol set created'); render();
+    });
+}
+
+function openCreateIdentitySource() {
+    openModal('Create Identity Source', `
+        <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Corporate AD"></div>
+        <div class="form-group"><label>Description</label><input id="f-desc"></div>
+        <div class="form-group"><label>Type</label><select id="f-type">
+            <option value="internal">Internal Users</option>
+            <option value="active_directory">Active Directory</option>
+            <option value="ldap">LDAP</option>
+            <option value="certificate">Certificate</option>
+            <option value="mab">MAB</option>
+        </select></div>
+        <div class="form-group"><label>Config (JSON)</label><textarea id="f-config" placeholder='{"host":"10.10.10.50","port":389}'></textarea></div>
+        <div class="form-group"><label>Priority</label><input id="f-prio" type="number" value="0"></div>
+    `, async () => {
+        await api('/identity-sources', 'POST', {
+            name: gv('f-name'), description: gv('f-desc'),
+            source_type: gv('f-type'), priority: parseInt(gv('f-prio')),
+            config_json: gv('f-config') ? JSON.parse(gv('f-config')) : null,
+        });
+        closeModal(); toast('Identity source created'); render();
+    });
+}
+
+// ═══════════════════════════════════════════
+// DELETE actions
+// ═══════════════════════════════════════════
+async function deletePolicySet(id) { if (confirm('Delete this policy set?')) { await api(`/policy-sets/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteAuthPolicy(id) { if (confirm('Delete this auth rule?')) { await api(`/authentication-policies/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteAuthzPolicy(id) { if (confirm('Delete this authz rule?')) { await api(`/authorization-policies/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteCondition(id) { if (confirm('Delete this condition?')) { await api(`/conditions/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteAuthzProfile(id) { if (confirm('Delete this profile?')) { await api(`/authorization-profiles/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteProtocol(id) { if (confirm('Delete this protocol set?')) { await api(`/allowed-protocols/${id}`,'DELETE'); toast('Deleted'); render(); }}
+async function deleteIdentitySource(id) { if (confirm('Delete this source?')) { await api(`/identity-sources/${id}`,'DELETE'); toast('Deleted'); render(); }}
+
+// ═══════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════
+function gv(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function formatNum(n) { return (n||0).toLocaleString(); }
+function toast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    navigate('policy-sets');
+});
+</script>
+</body>
+</html>

@@ -1,220 +1,147 @@
 """
-/api/v1/authorize — called by FreeRADIUS rlm_rest on every auth request.
-Returns RADIUS reply attributes (VLAN, ACL, URL-redirect) based on policies.
-
-Flow:
-  1. FreeRADIUS receives Access-Request from switch
-  2. FreeRADIUS calls POST /api/v1/authorize with user/device context
-  3. Policy Engine evaluates policies (AD group, device profile, posture, cert)
-  4. Returns RADIUS attributes → FreeRADIUS adds to Access-Accept/Reject
+Open NAC — FreeRADIUS Authorization Endpoint
+Called by rlm_rest when FreeRADIUS receives Access-Request.
+Translates RADIUS attributes → ISE-style evaluation → RADIUS reply.
 """
 
 import logging
-import time
-from datetime import datetime
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from typing import Optional
+from typing import Any, Dict
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
-from app.core.database import get_db
-from app.core.policy_evaluator import policy_evaluator, AuthContext
-from app.core.redis_client import redis_pool
-from app.core.policy_log import policy_log, PolicyLogEntry
+from app.api.policy_routes import get_evaluator
 
-logger = logging.getLogger("nac.authorize")
-router = APIRouter()
+logger = logging.getLogger("authorize")
+router = APIRouter(tags=["FreeRADIUS Integration"])
 
 
-class AuthorizeRequest(BaseModel):
-    username: str = ""
-    mac_address: str = ""
-    nas_ip: str = ""
-    nas_port: str = ""
-    nas_port_type: str = ""
-    called_station_id: str = ""
-    eap_type: str = "none"
-    service_type: str = ""
-    framed_ip: str = ""
+# Mapping of common RADIUS attribute names to our namespaced format
+RADIUS_ATTR_MAP = {
+    "User-Name":            "RADIUS:User-Name",
+    "NAS-IP-Address":       "RADIUS:NAS-IP-Address",
+    "NAS-Port-Type":        "RADIUS:NAS-Port-Type",
+    "NAS-Port":             "RADIUS:NAS-Port",
+    "NAS-Identifier":       "RADIUS:NAS-Identifier",
+    "Calling-Station-Id":   "RADIUS:Calling-Station-Id",
+    "Called-Station-Id":     "RADIUS:Called-Station-Id",
+    "Service-Type":         "RADIUS:Service-Type",
+    "Framed-MTU":           "RADIUS:Framed-MTU",
+    "EAP-Type":             "RADIUS:EAP-Type",
+    "NAS-Port-Id":          "RADIUS:NAS-Port-Id",
+    "Connect-Info":         "RADIUS:Connect-Info",
+    "Acct-Session-Id":      "RADIUS:Acct-Session-Id",
+}
 
 
-class ProfileRequest(BaseModel):
-    mac_address: str
-    ip_address: str = ""
-    user_agent: str = ""
-    dhcp_fingerprint: str = ""
-    dhcp_vendor: str = ""
+def normalize_radius_request(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert raw FreeRADIUS rlm_rest POST body to namespaced context."""
+    context = {}
+    for key, value in raw.items():
+        # Skip internal FreeRADIUS keys
+        if key.startswith("__"):
+            continue
+        # Map known attributes
+        mapped = RADIUS_ATTR_MAP.get(key)
+        if mapped:
+            context[mapped] = value
+        else:
+            # Keep as-is but add RADIUS: prefix if not already namespaced
+            if ":" not in key:
+                context[f"RADIUS:{key}"] = value
+            else:
+                context[key] = value
 
-
-class RedirectRequest(BaseModel):
-    mac_address: str
-    nas_ip: str
-    redirect_type: str = "guest_registration"
-
-
-@router.post("/authorize")
-async def authorize(req: AuthorizeRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Main authorization endpoint — called by FreeRADIUS on every Access-Request.
-    Evaluates policies and returns VLAN/ACL/redirect.
-    """
-    mac = req.mac_address.lower().replace("-", ":") if req.mac_address else ""
-
-    _t0 = time.time()
-    logger.info(f"AUTH REQUEST: user={req.username} mac={mac} nas={req.nas_ip} eap={req.eap_type}")
-
-    # Check cache first
+    # Normalize Calling-Station-Id (MAC) format: uppercase, colon-separated
+    mac = context.get("RADIUS:Calling-Station-Id", "")
     if mac:
-        cached = await redis_pool.get_cached_auth(mac)
-        if cached:
-            logger.info(f"AUTH CACHED: mac={mac} → {cached.get('policy_name', 'unknown')}")
-            return cached
-
-    # Look up endpoint in DB
-    ep_data = {"profile": "Unknown", "category": "unknown", "posture": "unknown", "groups": ""}
-    if mac:
-        ep_result = await db.execute(
-            text("SELECT device_profile, device_category, posture_status, ad_groups, username "
-                 "FROM nac_endpoints WHERE mac_address = :mac"),
-            {"mac": mac},
-        )
-        ep = ep_result.fetchone()
-        if ep:
-            ep_data = {
-                "profile": ep[0] or "Unknown",
-                "category": ep[1] or "unknown",
-                "posture": ep[2] or "unknown",
-                "groups": ep[3] or "",
-            }
-
-    # Check certificate status if EAP-TLS
-    cert_valid = False
-    if req.eap_type and req.eap_type.upper() in ("TLS", "EAP-TLS"):
-        cert_valid = True
-        # Check if cert is revoked
-        if req.username:
-            cert_result = await db.execute(
-                text("SELECT status FROM nac_certificates WHERE username = :u AND status = 'active' LIMIT 1"),
-                {"u": req.username}
+        mac_clean = mac.upper().replace("-", ":").replace(".", ":")
+        # Handle Cisco format (aabb.ccdd.eeff → AA:BB:CC:DD:EE:FF)
+        if len(mac_clean) == 14 and ":" not in mac_clean:
+            mac_clean = ":".join(
+                mac_clean.replace(".", "")[i:i+2] for i in range(0, 12, 2)
             )
-            cert_row = cert_result.fetchone()
-            cert_valid = cert_row is not None
+        context["RADIUS:Calling-Station-Id"] = mac_clean
 
-    # Determine auth method for policy matching
-    auth_method = req.eap_type or "none"
-    if req.service_type == "Call-Check":
-        auth_method = "MAB"
-
-    # Build context for policy evaluation
-    groups = [g.strip() for g in ep_data["groups"].split(",") if g.strip()]
-    ctx = AuthContext(
-        username=req.username,
-        mac_address=mac,
-        nas_ip=req.nas_ip,
-        nas_port=req.nas_port,
-        eap_type=auth_method,
-        service_type=req.service_type,
-        framed_ip=req.framed_ip,
-        ldap_groups=groups,
-        ad_department="",
-        device_profile=ep_data["profile"],
-        device_category=ep_data["category"],
-        posture_status=ep_data["posture"],
-        certificate=cert_valid,
-    )
-
-    # Evaluate policies
-    result = await policy_evaluator.evaluate(ctx, db)
-
-    logger.info(
-        f"AUTH DECISION: user={req.username} mac={mac} "
-        f"→ policy='{result.policy_name}' vlan={result.tunnel_private_group_id} "
-        f"acl={result.filter_id} decision={result.decision}"
-    )
-
-    # Build response
-    response = result.to_radius_dict()
-
-    # Update endpoint record
-    if mac:
-        await _update_endpoint(db, mac, req, result)
-
-    # Cache the result (TTL 5 min)
-    if mac:
-        await redis_pool.cache_auth_result(mac, response, ttl=300)
-
-    return response
+    return context
 
 
-@router.post("/profile")
-async def profile_endpoint(req: ProfileRequest, db: AsyncSession = Depends(get_db)):
-    """Called by FreeRADIUS post-auth to trigger profiling."""
-    mac = req.mac_address.lower().replace("-", ":")
-    await db.execute(
-        text("""
-            INSERT INTO nac_endpoints (mac_address, ip_address, user_agent, dhcp_fingerprint, dhcp_vendor, last_seen)
-            VALUES (:mac, :ip, :ua, :dhcp_fp, :dhcp_v, NOW())
-            ON DUPLICATE KEY UPDATE
-                ip_address = COALESCE(:ip, ip_address),
-                user_agent = COALESCE(:ua, user_agent),
-                dhcp_fingerprint = COALESCE(:dhcp_fp, dhcp_fingerprint),
-                dhcp_vendor = COALESCE(:dhcp_v, dhcp_vendor),
-                last_seen = NOW()
-        """),
-        {"mac": mac, "ip": req.ip_address or None, "ua": req.user_agent or None,
-         "dhcp_fp": req.dhcp_fingerprint or None, "dhcp_v": req.dhcp_vendor or None},
-    )
-    await db.commit()
-    return {"status": "profiled", "mac": mac}
+@router.post("/api/v2/authorize")
+async def authorize(request: Request):
+    """
+    Called by FreeRADIUS rlm_rest.
+    
+    Input: RADIUS Access-Request attributes (form or JSON)
+    Output: RADIUS reply attributes (JSON) for Access-Accept/Reject
+    
+    FreeRADIUS rlm_rest config:
+        authorize {
+            uri = "http://policy-engine:8000/api/v2/authorize"
+            method = 'post'
+            body = 'json'
+            ...
+        }
+    """
+    # Parse request body (support both form and JSON)
+    content_type = request.headers.get("content-type", "")
+    if "json" in content_type:
+        raw = await request.json()
+    else:
+        form = await request.form()
+        raw = dict(form)
 
+    logger.info(f"RADIUS request: User-Name={raw.get('User-Name', 'unknown')}, "
+                f"NAS-IP={raw.get('NAS-IP-Address', '?')}, "
+                f"MAC={raw.get('Calling-Station-Id', '?')}")
 
-@router.post("/redirect-url")
-async def redirect_url(req: RedirectRequest):
-    """Build captive portal redirect URL."""
-    portal_base = "https://portal.nac.local:8443"
-    urls = {
-        "guest_registration": f"{portal_base}/guest/register?mac={req.mac_address}",
-        "byod_onboarding": f"{portal_base}/byod/enroll?mac={req.mac_address}",
-        "posture_remediation": f"{portal_base}/remediation?mac={req.mac_address}",
-    }
-    return {
-        "url-redirect": urls.get(req.redirect_type, urls["guest_registration"]),
-        "url-redirect-acl": "ACL-WEBAUTH-REDIRECT",
-    }
+    # Normalize to namespaced context
+    context = normalize_radius_request(raw)
 
+    # Run ISE-style evaluation
+    evaluator = get_evaluator()
+    result = await evaluator.evaluate(context)
 
-async def _update_endpoint(db: AsyncSession, mac: str, req, result):
-    """Update endpoint record with auth result."""
-    try:
-        await db.execute(
-            text("""
-                INSERT INTO nac_endpoints (mac_address, ip_address, username, nas_ip, nas_port,
-                    auth_method, auth_status, assigned_vlan, last_seen, last_auth)
-                VALUES (:mac, :ip, :user, :nas, :port, :method, :status, :vlan, NOW(), NOW())
-                ON DUPLICATE KEY UPDATE
-                    ip_address = COALESCE(:ip, ip_address),
-                    username = COALESCE(:user, username),
-                    nas_ip = :nas,
-                    nas_port = :port,
-                    auth_method = :method,
-                    auth_status = :status,
-                    assigned_vlan = :vlan,
-                    last_seen = NOW(),
-                    last_auth = NOW()
-            """),
-            {
-                "mac": mac,
-                "ip": req.framed_ip or None,
-                "user": req.username or None,
-                "nas": req.nas_ip,
-                "port": req.nas_port,
-                "method": req.eap_type or "PAP",
-                "status": "authenticated" if result.decision == "permit" else "rejected",
-                "vlan": result.tunnel_private_group_id,
-            },
+    logger.info(f"Policy decision: {result['decision']} "
+                f"(set={result['policy_set']}, authz={result['authz_rule']}, "
+                f"time={result['evaluation_time_ms']}ms)")
+
+    # Format response for FreeRADIUS rlm_rest
+    if result["decision"] == "accept":
+        reply = {
+            "control:Auth-Type": "Accept",
+        }
+        # Add RADIUS reply attributes from authorization profile
+        for attr_name, attr_value in result.get("radius_attributes", {}).items():
+            if isinstance(attr_value, list):
+                # Multi-valued attributes (e.g., Cisco-AVPair)
+                for i, v in enumerate(attr_value):
+                    reply[f"reply:{attr_name}"] = v  # rlm_rest handles += for multi
+            else:
+                reply[f"reply:{attr_name}"] = str(attr_value)
+
+        return JSONResponse(content=reply, status_code=200)
+
+    elif result["decision"] == "drop":
+        return JSONResponse(content={}, status_code=204)
+
+    else:  # reject
+        return JSONResponse(
+            content={"control:Auth-Type": "Reject"},
+            status_code=200
         )
-        await db.commit()
-    except Exception as e:
-        logger.warning(f"Failed to update endpoint {mac}: {e}")
+
+
+@router.post("/api/v2/post-auth")
+async def post_auth(request: Request):
+    """Post-authentication hook — logging and accounting."""
+    content_type = request.headers.get("content-type", "")
+    if "json" in content_type:
+        raw = await request.json()
+    else:
+        form = await request.form()
+        raw = dict(form)
+
+    logger.info(f"Post-auth: User={raw.get('User-Name', '?')}, "
+                f"Reply={raw.get('Reply-Message', '?')}, "
+                f"MAC={raw.get('Calling-Station-Id', '?')}")
+    return JSONResponse(content={}, status_code=200)
