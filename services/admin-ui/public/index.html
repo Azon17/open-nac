@@ -1327,11 +1327,465 @@ function EditModal({editing,editType,form,setForm,save,setEditing,conditions,req
 function LDAPPage(){const[cfg,setCfg]=useState({server:"dc1.corp.local",port:636,use_ssl:true,bind_dn:"CN=svc-radius,OU=Service Accounts,DC=corp,DC=local",bind_password:"",base_dn:"DC=corp,DC=local",user_filter:"(sAMAccountName=%{Stripped-User-Name})",group_attribute:"memberOf",mappings:[{ad_group:"Domain Admins",nac_group:"admins",vlan:"10"},{ad_group:"Domain Users",nac_group:"employees",vlan:"100"},{ad_group:"Contractors",nac_group:"contractors",vlan:"200"}]});const[msg,setMsg]=useState(null);const addMap=()=>setCfg({...cfg,mappings:[...cfg.mappings,{ad_group:"",nac_group:"",vlan:""}]});const delMap=i=>setCfg({...cfg,mappings:cfg.mappings.filter((_,j)=>j!==i)});const updMap=(i,k,v)=>{const m=[...cfg.mappings];m[i]={...m[i],[k]:v};setCfg({...cfg,mappings:m})};const save=()=>{setMsg({type:"success",text:"LDAP config saved"});setTimeout(()=>setMsg(null),4000)};return<div><Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/><div className="card" style={{marginBottom:16}}><div className="card-header">Connection</div><div style={{padding:16}}><div className="field-row"><div><label className="label">Server</label><input className="input mono" value={cfg.server} onChange={e=>setCfg({...cfg,server:e.target.value})}/></div><div className="field-row" style={{marginBottom:0}}><div><label className="label">Port</label><input className="input mono" type="number" value={cfg.port} onChange={e=>setCfg({...cfg,port:+e.target.value})}/></div><div><label className="label">SSL</label><div className={`toggle ${cfg.use_ssl?"on":"off"}`} style={{marginTop:6}} onClick={()=>setCfg({...cfg,use_ssl:!cfg.use_ssl})}/></div></div></div><div className="field"><label className="label">Bind DN</label><input className="input mono" value={cfg.bind_dn} onChange={e=>setCfg({...cfg,bind_dn:e.target.value})}/></div><div className="field"><label className="label">Bind Password</label><input className="input mono" type="password" value={cfg.bind_password} onChange={e=>setCfg({...cfg,bind_password:e.target.value})}/></div><div className="field"><label className="label">Base DN</label><input className="input mono" value={cfg.base_dn} onChange={e=>setCfg({...cfg,base_dn:e.target.value})}/></div></div></div><div className="card" style={{marginBottom:16}}><div className="card-header"><span>AD Group → VLAN Mapping</span><button className="btn btn-default btn-sm" onClick={addMap}>+ Add</button></div><table><thead><tr><th>AD Group</th><th>NAC Group</th><th>VLAN</th><th></th></tr></thead><tbody>{cfg.mappings.map((m,i)=><tr key={i}><td><input className="input mono" value={m.ad_group} onChange={e=>updMap(i,"ad_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input" value={m.nac_group} onChange={e=>updMap(i,"nac_group",e.target.value)} style={{border:"none",padding:"2px 0"}}/></td><td><input className="input mono" value={m.vlan} onChange={e=>updMap(i,"vlan",e.target.value)} style={{border:"none",padding:"2px 0",width:80}}/></td><td><button className="btn btn-danger btn-sm" onClick={()=>delMap(i)}>×</button></td></tr>)}</tbody></table></div><button className="btn btn-primary" onClick={save}>Save configuration</button></div>}
 
 // ─── Settings ───
+
+
+
+// ─── ISE Policy Sets Page (v2 API) ───
+function ISEPolicyPage(){
+  const[view,setView]=useState("sets");
+  const[sets,setSets]=useState([]);
+  const[detail,setDetail]=useState(null);
+  const[conditions,setConditions]=useState([]);
+  const[profiles,setProfiles]=useState([]);
+  const[protocols,setProtocols]=useState([]);
+  const[sources,setSources]=useState([]);
+  const[stats,setStats]=useState(null);
+  const[editing,setEditing]=useState(null);
+  const[editType,setEditType]=useState(null);
+  const[form,setForm]=useState({});
+  const[msg,setMsg]=useState(null);
+  const[evalInput,setEvalInput]=useState(JSON.stringify({"RADIUS:NAS-Port-Type":"Ethernet","RADIUS:EAP-Type":"PEAP","AD:memberOf":"CN=Employees,OU=Groups,DC=corp,DC=local","Posture:Status":"Compliant"},null,2));
+  const[evalResult,setEvalResult]=useState(null);
+  const A2="/api/v2/policy";
+  const api2=async(p,o={})=>{try{const r=await fetch(A2+p,{headers:{"Content-Type":"application/json"},...o});if(!r.ok){const e=await r.text();throw new Error(e)}return r.status===204?null:await r.json()}catch(e){setMsg({type:"error",text:e.message});return null}};
+
+  const loadSets=async()=>{const d=await api2("/policy-sets");if(d)setSets(d)};
+  const loadDetail=async(id)=>{const d=await api2(`/policy-sets/${id}`);if(d){setDetail(d);setView("detail")}};
+  const loadConditions=async()=>{const d=await api2("/conditions");if(d)setConditions(d)};
+  const loadProfiles=async()=>{const d=await api2("/authorization-profiles");if(d)setProfiles(d)};
+  const loadProtocols=async()=>{const d=await api2("/allowed-protocols");if(d)setProtocols(d)};
+  const loadSources=async()=>{const d=await api2("/identity-sources");if(d)setSources(d)};
+  const loadStats=async()=>{const d=await api2("/stats");if(d)setStats(d)};
+
+  // Load ALL reference data on mount so dropdowns are always populated
+  const loadAllRef=()=>{loadConditions();loadProfiles();loadProtocols();loadSources()};
+  useEffect(()=>{loadSets();loadStats();loadAllRef()},[]);
+
+  const showMsg=(type,text)=>{setMsg({type,text});setTimeout(()=>setMsg(null),4000)};
+
+  const del=async(table,id,label)=>{
+    if(!confirm(`Delete "${label}"?`))return;
+    const paths={policy_sets:`/policy-sets/${id}`,authentication_policies:`/authentication-policies/${id}`,authorization_policies:`/authorization-policies/${id}`,conditions:`/conditions/${id}`,authorization_profiles:`/authorization-profiles/${id}`,allowed_protocols:`/allowed-protocols/${id}`,identity_sources:`/identity-sources/${id}`};
+    await api2(paths[table],{method:"DELETE"});
+    showMsg("success","Deleted");
+    if(table==="policy_sets")loadSets();
+    else if(detail)loadDetail(detail.id);
+    if(view==="conditions"){loadConditions();loadAllRef()}
+    if(view==="profiles"){loadProfiles();loadAllRef()}
+    if(view==="protocols"){loadProtocols();loadAllRef()}
+    if(view==="sources"){loadSources();loadAllRef()}
+  };
+
+  // ─── Edit helpers ───
+  const editPolicySet=(ps)=>{setEditType("policy_set");setForm({_id:ps.id,name:ps.name,description:ps.description||"",priority:ps.priority,condition_id:ps.condition_id||"",allowed_protocols_id:ps.allowed_protocols_id||"",is_default:ps.is_default});setEditing(ps.id)};
+  const editAuthRule=(r)=>{setEditType("auth_policy");setForm({_id:r.id,name:r.name,policy_set_id:r.policy_set_id,condition_id:r.condition_id||"",identity_source_id:r.identity_source_id||"",on_failure:r.on_failure||"reject",priority:r.priority});setEditing(r.id)};
+  const editAuthzRule=(r)=>{setEditType("authz_policy");setForm({_id:r.id,name:r.name,policy_set_id:r.policy_set_id,condition_id:r.condition_id||"",authorization_profile_id:r.authorization_profile_id||"",priority:r.priority,is_default:r.is_default});setEditing(r.id)};
+  const editCondition=(c)=>{setEditType("condition");setForm({_id:c.id,name:c.name,description:c.description||"",condition_type:c.condition_type,attribute:c.attribute||"",operator:c.operator||"equals",value:c.value||"",category:c.category||"Network",compound_json:c.compound_json?JSON.stringify(c.compound_json,null,2):""});setEditing(c.id)};
+  const editProfile=(p)=>{setEditType("profile");setForm({_id:p.id,name:p.name,description:p.description||"",access_type:p.access_type,vlan_id:p.vlan_id||"",vlan_name:p.vlan_name||"",acl_name:p.acl_name||"",session_timeout:p.session_timeout||"",url_redirect:p.url_redirect||""});setEditing(p.id)};
+  const editSource=(s)=>{setEditType("source");setForm({_id:s.id,name:s.name,description:s.description||"",source_type:s.source_type,config_json:s.config_json?JSON.stringify(s.config_json,null,2):"",priority:s.priority||0});setEditing(s.id)};
+
+  // ─── Dropdown helper ───
+  const IdSelect=({label,value,onChange,items,placeholder})=><div>
+    <label className="label">{label}</label>
+    <select className="input" value={value||""} onChange={e=>onChange(e.target.value?parseInt(e.target.value):"")} style={{cursor:"pointer"}}>
+      <option value="">{placeholder||"— None —"}</option>
+      {items.map(i=><option key={i.id} value={i.id}>{i.name}{i.description?` — ${i.description.slice(0,40)}`:""}</option>)}
+    </select>
+  </div>;
+
+  // ─── Sub-tabs ───
+  const tabs=[
+    {id:"sets",label:"Policy Sets",icon:"⊞"},
+    {id:"conditions",label:"Conditions",icon:"◈"},
+    {id:"profiles",label:"Auth Profiles",icon:"⊕"},
+    {id:"protocols",label:"Protocols",icon:"⊗"},
+    {id:"sources",label:"Identity Sources",icon:"⊘"},
+    {id:"evaluate",label:"Evaluator",icon:"▷"},
+  ];
+
+  const switchTab=(t)=>{
+    setView(t);setDetail(null);
+    if(t==="sets")loadSets();
+    if(t==="conditions")loadConditions();
+    if(t==="profiles")loadProfiles();
+    if(t==="protocols")loadProtocols();
+    if(t==="sources")loadSources();
+  };
+
+  // ─── Render helpers ───
+  const CondPill=({rule})=>{
+    if(!rule?.condition)return<span style={{color:"#9ca3af",fontSize:12}}>Always</span>;
+    const c=rule.condition;
+    if(c.condition_type==="compound")return<span className="badge badge-yellow">{c.name}</span>;
+    return<span className="badge badge-blue" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11}}>{c.attribute} <b style={{color:"#f48120"}}>{c.operator}</b> {c.value}</span>;
+  };
+
+  const ProfileBadge=({p})=>{
+    if(!p)return<span style={{color:"#9ca3af"}}>—</span>;
+    if(p.access_type==="access_reject")return<span className="badge badge-red">{p.name}</span>;
+    const parts=[];
+    if(p.vlan_id)parts.push(`VLAN ${p.vlan_id}`);
+    if(p.acl_name)parts.push(p.acl_name);
+    if(p.url_redirect)parts.push("URL↗");
+    return<span><span className="badge badge-green">{p.name}</span>{parts.length>0&&<span style={{marginLeft:6,fontSize:11,color:"#6b7280"}}>{parts.join(" · ")}</span>}</span>;
+  };
+
+  // Helper: resolve name by id from a list
+  const nameById=(list,id)=>{const item=list.find(i=>i.id===id);return item?item.name:null};
+
+  // ═══════════════════════════════
+  // POLICY SETS LIST
+  // ═══════════════════════════════
+  const renderSets=()=><div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+      <div style={{fontSize:13,color:"#6b7280"}}>{sets.length} policy sets {stats&&<span className="mono">({stats.conditions} conditions, {stats.authz_profiles} profiles)</span>}</div>
+      <button className="btn btn-primary" onClick={()=>{setEditType("policy_set");setForm({name:"",description:"",priority:100,condition_id:"",allowed_protocols_id:"",is_default:false});setEditing("new")}}>+ New Policy Set</button>
+    </div>
+    <div className="card"><table><thead><tr><th style={{width:30}}></th><th>Name</th><th>Condition</th><th>Protocols</th><th>Auth</th><th>Authz</th><th>Priority</th><th>Hits</th><th></th></tr></thead><tbody>
+      {sets.map(ps=><tr key={ps.id} style={{cursor:"pointer"}} onDoubleClick={()=>loadDetail(ps.id)}>
+        <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:ps.enabled?"#16a34a":"#dc2626"}}/></td>
+        <td><div style={{fontWeight:600}}>{ps.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{ps.description}</div></td>
+        <td>{ps.condition_id?<span className="badge badge-blue">{nameById(conditions,ps.condition_id)||`#${ps.condition_id}`}</span>:ps.is_default?<span className="badge badge-orange">★ Default</span>:<span style={{color:"#d1d5db"}}>—</span>}</td>
+        <td>{ps.allowed_protocols_id?<span className="badge badge-gray">{nameById(protocols,ps.allowed_protocols_id)||`#${ps.allowed_protocols_id}`}</span>:"—"}</td>
+        <td><span className="badge badge-gray">{ps.auth_policy_count}</span></td>
+        <td><span className="badge badge-gray">{ps.authz_policy_count}</span></td>
+        <td><span className="mono" style={{color:"#9ca3af"}}>{ps.priority}</span></td>
+        <td><span className="mono" style={{color:"#9ca3af"}}>{(ps.hit_count||0).toLocaleString()}</span></td>
+        <td><div style={{display:"flex",gap:4}}>
+          <button className="btn btn-default btn-sm" onClick={(e)=>{e.stopPropagation();loadDetail(ps.id)}}>Open →</button>
+          <button className="btn btn-default btn-sm" onClick={(e)=>{e.stopPropagation();editPolicySet(ps)}}>Edit</button>
+          <button className="btn btn-danger btn-sm" onClick={(e)=>{e.stopPropagation();del("policy_sets",ps.id,ps.name)}}>Del</button>
+        </div></td>
+      </tr>)}
+    </tbody></table></div>
+  </div>;
+
+  // ═══════════════════════════════
+  // POLICY SET DETAIL
+  // ═══════════════════════════════
+  const renderDetail=()=>{
+    if(!detail)return null;
+    const ps=detail;
+    return<div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+        <button className="btn btn-default btn-sm" onClick={()=>{setView("sets");setDetail(null);loadSets()}}>← Back</button>
+        <h2 style={{fontSize:18,fontWeight:700,margin:0}}>{ps.name}</h2>
+        <span style={{width:8,height:8,borderRadius:"50%",background:ps.enabled?"#16a34a":"#dc2626"}}/>
+      </div>
+      <div className="card" style={{marginBottom:16,padding:"12px 16px"}}>
+        <div style={{display:"flex",gap:24,fontSize:12,color:"#6b7280"}}>
+          <span><b>Priority:</b> {ps.priority}</span>
+          <span><b>Protocols:</b> {ps.allowed_protocols?.name||"—"}</span>
+          <span><b>Condition:</b> {ps.condition?.name||(ps.is_default?"Default (catch-all)":"—")}</span>
+          <span><b>Hits:</b> {(ps.hit_count||0).toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Authentication Policy */}
+      <div className="card" style={{marginBottom:16}}>
+        <div className="card-header"><span><span className="badge badge-blue" style={{marginRight:8}}>Authentication</span> Authentication Policy</span>
+          <button className="btn btn-primary btn-sm" onClick={()=>{setEditType("auth_policy");setForm({name:"",policy_set_id:ps.id,condition_id:"",identity_source_id:"",on_failure:"reject",priority:100});setEditing("new")}}>+ Rule</button></div>
+        <table><thead><tr><th></th><th>Rule</th><th>Condition</th><th>Identity Source</th><th>On Fail</th><th>Pri</th><th>Hits</th><th></th></tr></thead><tbody>
+          {(ps.authentication_policies||[]).map(r=><tr key={r.id}>
+            <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:r.enabled?"#16a34a":"#dc2626"}}/></td>
+            <td style={{fontWeight:500}}>{r.name}</td>
+            <td><CondPill rule={r}/></td>
+            <td>{r.identity_source?<span className="badge badge-purple">{r.identity_source.name}</span>:"—"}</td>
+            <td><span style={{fontSize:12,color:r.on_failure==="reject"?"#dc2626":r.on_failure==="continue"?"#f59e0b":"#9ca3af"}}>{r.on_failure}</span></td>
+            <td className="mono" style={{color:"#9ca3af"}}>{r.priority}</td>
+            <td className="mono" style={{color:"#9ca3af"}}>{(r.hit_count||0).toLocaleString()}</td>
+            <td><div style={{display:"flex",gap:4}}>
+              <button className="btn btn-default btn-sm" onClick={()=>editAuthRule(r)}>Edit</button>
+              <button className="btn btn-danger btn-sm" onClick={()=>del("authentication_policies",r.id,r.name)}>Del</button>
+            </div></td>
+          </tr>)}
+          {(ps.authentication_policies||[]).length===0&&<tr><td colSpan={8} className="empty">No authentication rules</td></tr>}
+        </tbody></table>
+      </div>
+
+      {/* Authorization Policy */}
+      <div className="card">
+        <div className="card-header"><span><span className="badge badge-purple" style={{marginRight:8}}>Authorization</span> Authorization Policy</span>
+          <button className="btn btn-primary btn-sm" onClick={()=>{setEditType("authz_policy");setForm({name:"",policy_set_id:ps.id,condition_id:"",authorization_profile_id:"",priority:100,is_default:false});setEditing("new")}}>+ Rule</button></div>
+        <table><thead><tr><th></th><th>Rule</th><th>Condition</th><th>Authorization Profile</th><th>Pri</th><th>Hits</th><th></th></tr></thead><tbody>
+          {(ps.authorization_policies||[]).map(r=><tr key={r.id}>
+            <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:r.enabled?"#16a34a":"#dc2626"}}/></td>
+            <td style={{fontWeight:500}}>{r.name}{r.is_default&&<span className="badge badge-orange" style={{marginLeft:6}}>★ DEFAULT</span>}</td>
+            <td><CondPill rule={r}/></td>
+            <td><ProfileBadge p={r.authorization_profile}/></td>
+            <td className="mono" style={{color:"#9ca3af"}}>{r.priority}</td>
+            <td className="mono" style={{color:"#9ca3af"}}>{(r.hit_count||0).toLocaleString()}</td>
+            <td><div style={{display:"flex",gap:4}}>
+              <button className="btn btn-default btn-sm" onClick={()=>editAuthzRule(r)}>Edit</button>
+              <button className="btn btn-danger btn-sm" onClick={()=>del("authorization_policies",r.id,r.name)}>Del</button>
+            </div></td>
+          </tr>)}
+          {(ps.authorization_policies||[]).length===0&&<tr><td colSpan={7} className="empty">No authorization rules</td></tr>}
+        </tbody></table>
+      </div>
+    </div>;
+  };
+
+  // ═══════════════════════════════
+  // CONDITIONS
+  // ═══════════════════════════════
+  const renderConditions=()=><div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+      <div style={{fontSize:13,color:"#6b7280"}}>{conditions.length} conditions</div>
+      <button className="btn btn-primary" onClick={()=>{setEditType("condition");setForm({name:"",description:"",condition_type:"simple",attribute:"",operator:"equals",value:"",category:"Network",compound_json:""});setEditing("new")}}>+ New Condition</button>
+    </div>
+    <div className="card"><table><thead><tr><th></th><th>Name</th><th>Type</th><th>Definition</th><th>Category</th><th></th></tr></thead><tbody>
+      {conditions.map(c=><tr key={c.id}>
+        <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:c.enabled?"#16a34a":"#dc2626"}}/></td>
+        <td><div style={{fontWeight:500}}>{c.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{c.description}</div></td>
+        <td><span className={`badge ${c.condition_type==="compound"?"badge-yellow":"badge-blue"}`}>{c.condition_type}</span></td>
+        <td className="mono" style={{fontSize:11,color:"#6b7280",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis"}}>{c.condition_type==="simple"?`${c.attribute} ${c.operator} ${c.value}`:JSON.stringify(c.compound_json)}</td>
+        <td><span className="badge badge-gray">{c.category}</span></td>
+        <td><div style={{display:"flex",gap:4}}>
+          <button className="btn btn-default btn-sm" onClick={()=>editCondition(c)}>Edit</button>
+          <button className="btn btn-danger btn-sm" onClick={()=>del("conditions",c.id,c.name)}>Del</button>
+        </div></td>
+      </tr>)}
+    </tbody></table></div>
+  </div>;
+
+  // ═══════════════════════════════
+  // AUTH PROFILES
+  // ═══════════════════════════════
+  const renderProfiles=()=><div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+      <div style={{fontSize:13,color:"#6b7280"}}>{profiles.length} profiles</div>
+      <button className="btn btn-primary" onClick={()=>{setEditType("profile");setForm({name:"",description:"",access_type:"access_accept",vlan_id:"",vlan_name:"",acl_name:"",session_timeout:"",url_redirect:""});setEditing("new")}}>+ New Profile</button>
+    </div>
+    <div className="card"><table><thead><tr><th></th><th>Name</th><th>Access</th><th>VLAN</th><th>ACL</th><th>Redirect</th><th>Timeout</th><th></th></tr></thead><tbody>
+      {profiles.map(p=><tr key={p.id}>
+        <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:p.enabled?"#16a34a":"#dc2626"}}/></td>
+        <td><div style={{fontWeight:500}}>{p.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{p.description}</div></td>
+        <td><span className={`badge ${p.access_type==="access_accept"?"badge-green":"badge-red"}`}>{p.access_type==="access_accept"?"ACCEPT":"REJECT"}</span></td>
+        <td className="mono">{p.vlan_id?`${p.vlan_id}${p.vlan_name?" ("+p.vlan_name+")":""}`:"—"}</td>
+        <td className="mono">{p.acl_name||"—"}</td>
+        <td>{p.url_redirect?"↗ Yes":"—"}</td>
+        <td className="mono">{p.session_timeout?p.session_timeout+"s":"—"}</td>
+        <td><div style={{display:"flex",gap:4}}>
+          <button className="btn btn-default btn-sm" onClick={()=>editProfile(p)}>Edit</button>
+          <button className="btn btn-danger btn-sm" onClick={()=>del("authorization_profiles",p.id,p.name)}>Del</button>
+        </div></td>
+      </tr>)}
+    </tbody></table></div>
+  </div>;
+
+  // ═══════════════════════════════
+  // PROTOCOLS
+  // ═══════════════════════════════
+  const eapFields=["allow_pap","allow_chap","allow_mschap_v2","allow_peap","allow_eap_tls","allow_eap_fast","allow_eap_ttls","allow_eap_md5"];
+  const eapLabels=["PAP","CHAP","MSCHAPv2","PEAP","EAP-TLS","EAP-FAST","EAP-TTLS","EAP-MD5"];
+  const renderProtocols=()=><div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+      <div style={{fontSize:13,color:"#6b7280"}}>{protocols.length} protocol sets</div>
+    </div>
+    <div className="card"><table><thead><tr><th></th><th>Name</th>{eapLabels.map(l=><th key={l} style={{textAlign:"center",fontSize:9}}>{l}</th>)}<th></th></tr></thead><tbody>
+      {protocols.map(p=><tr key={p.id}>
+        <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:p.enabled?"#16a34a":"#dc2626"}}/></td>
+        <td><div style={{fontWeight:500}}>{p.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{p.description}</div></td>
+        {eapFields.map(f=><td key={f} style={{textAlign:"center"}}>{p[f]?<span style={{color:"#16a34a"}}>●</span>:<span style={{color:"#d1d5db"}}>○</span>}</td>)}
+        <td><button className="btn btn-danger btn-sm" onClick={()=>del("allowed_protocols",p.id,p.name)}>Del</button></td>
+      </tr>)}
+    </tbody></table></div>
+  </div>;
+
+  // ═══════════════════════════════
+  // IDENTITY SOURCES
+  // ═══════════════════════════════
+  const typeColors={internal:"badge-blue",active_directory:"badge-purple",ldap:"badge-blue",certificate:"badge-green",mab:"badge-orange"};
+  const renderSources=()=><div>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+      <div style={{fontSize:13,color:"#6b7280"}}>{sources.length} sources</div>
+    </div>
+    <div className="card"><table><thead><tr><th></th><th>Name</th><th>Type</th><th>Priority</th><th></th></tr></thead><tbody>
+      {sources.map(s=><tr key={s.id}>
+        <td><span style={{width:8,height:8,borderRadius:"50%",display:"inline-block",background:s.enabled?"#16a34a":"#dc2626"}}/></td>
+        <td><div style={{fontWeight:500}}>{s.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{s.description}</div></td>
+        <td><span className={`badge ${typeColors[s.source_type]||"badge-gray"}`}>{s.source_type}</span></td>
+        <td className="mono">{s.priority}</td>
+        <td><div style={{display:"flex",gap:4}}>
+          <button className="btn btn-default btn-sm" onClick={()=>editSource(s)}>Edit</button>
+          <button className="btn btn-danger btn-sm" onClick={()=>del("identity_sources",s.id,s.name)}>Del</button>
+        </div></td>
+      </tr>)}
+    </tbody></table></div>
+  </div>;
+
+  // ═══════════════════════════════
+  // EVALUATOR
+  // ═══════════════════════════════
+  const runEval=async()=>{
+    try{
+      const attrs=JSON.parse(evalInput);
+      const r=await api2("/evaluate",{method:"POST",body:JSON.stringify({attributes:attrs})});
+      if(r)setEvalResult(r);
+    }catch(e){setMsg({type:"error",text:"Invalid JSON: "+e.message})}
+  };
+  const renderEval=()=><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+    <div>
+      <div className="card"><div className="card-header">Request Attributes</div><div style={{padding:16}}>
+        <div className="field"><label className="label">RADIUS Context (JSON)</label><textarea className="input mono" value={evalInput} onChange={e=>setEvalInput(e.target.value)} rows={14} style={{resize:"vertical"}}/></div>
+        <button className="btn btn-primary" style={{marginTop:8}} onClick={runEval}>▷ Evaluate</button>
+      </div></div>
+    </div>
+    <div>
+      {evalResult?<div>
+        <div className="card" style={{marginBottom:12,padding:16,borderLeft:`4px solid ${evalResult.decision==="accept"?"#16a34a":"#dc2626"}`}}>
+          <div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1}}>Decision</div>
+          <div style={{fontSize:22,fontWeight:700,color:evalResult.decision==="accept"?"#16a34a":"#dc2626"}}>{evalResult.decision.toUpperCase()}</div>
+        </div>
+        {[["Policy Set",evalResult.policy_set],["Auth Rule",evalResult.auth_rule],["Authz Rule",evalResult.authz_rule],["Time",evalResult.evaluation_time_ms+"ms"]].map(([l,v])=>
+          <div key={l} className="card" style={{marginBottom:8,padding:"10px 16px"}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase"}}>{l}</div><div style={{fontWeight:500}}>{v||"—"}</div></div>
+        )}
+        <div className="card" style={{marginBottom:8,padding:"10px 16px"}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",marginBottom:4}}>RADIUS Reply</div><pre className="mono" style={{fontSize:11,whiteSpace:"pre-wrap",color:"#2563eb"}}>{JSON.stringify(evalResult.radius_attributes,null,2)}</pre></div>
+      </div>:<div className="card" style={{padding:16}}><div className="empty">Run an evaluation to see results</div></div>}
+    </div>
+  </div>;
+
+  // ═══════════════════════════════
+  // MODAL SAVE (Create + Edit)
+  // ═══════════════════════════════
+  const isEdit=editing!==null&&editing!=="new";
+  const save=async()=>{
+    try{
+      if(editType==="policy_set"){
+        const body={name:form.name,description:form.description,priority:parseInt(form.priority)||100,condition_id:form.condition_id?parseInt(form.condition_id):null,allowed_protocols_id:form.allowed_protocols_id?parseInt(form.allowed_protocols_id):null,is_default:form.is_default};
+        if(isEdit)await api2(`/policy-sets/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else await api2("/policy-sets",{method:"POST",body:JSON.stringify(body)});
+        loadSets();
+      }else if(editType==="auth_policy"){
+        const body={name:form.name,condition_id:form.condition_id?parseInt(form.condition_id):null,identity_source_id:form.identity_source_id?parseInt(form.identity_source_id):null,on_failure:form.on_failure,priority:parseInt(form.priority)||100};
+        if(isEdit)await api2(`/authentication-policies/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else{body.policy_set_id=form.policy_set_id;await api2(`/policy-sets/${form.policy_set_id}/authentication`,{method:"POST",body:JSON.stringify(body)})}
+        if(detail)loadDetail(detail.id);
+      }else if(editType==="authz_policy"){
+        const body={name:form.name,condition_id:form.condition_id?parseInt(form.condition_id):null,authorization_profile_id:form.authorization_profile_id?parseInt(form.authorization_profile_id):null,priority:parseInt(form.priority)||100,is_default:form.is_default||false};
+        if(isEdit)await api2(`/authorization-policies/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else{body.policy_set_id=form.policy_set_id;await api2(`/policy-sets/${form.policy_set_id}/authorization`,{method:"POST",body:JSON.stringify(body)})}
+        if(detail)loadDetail(detail.id);
+      }else if(editType==="condition"){
+        const body={name:form.name,description:form.description,condition_type:form.condition_type,category:form.category};
+        if(form.condition_type==="simple"){body.attribute=form.attribute;body.operator=form.operator;body.value=form.value}
+        else{body.compound_json=JSON.parse(form.compound_json)}
+        if(isEdit)await api2(`/conditions/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else await api2("/conditions",{method:"POST",body:JSON.stringify(body)});
+        loadConditions();loadAllRef();
+      }else if(editType==="profile"){
+        const body={name:form.name,description:form.description,access_type:form.access_type,vlan_id:form.vlan_id?parseInt(form.vlan_id):null,vlan_name:form.vlan_name||null,acl_name:form.acl_name||null,session_timeout:form.session_timeout?parseInt(form.session_timeout):null,url_redirect:form.url_redirect||null};
+        if(isEdit)await api2(`/authorization-profiles/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else await api2("/authorization-profiles",{method:"POST",body:JSON.stringify(body)});
+        loadProfiles();loadAllRef();
+      }else if(editType==="source"){
+        const body={name:form.name,description:form.description,source_type:form.source_type,priority:parseInt(form.priority)||0,config_json:form.config_json?JSON.parse(form.config_json):null};
+        if(isEdit)await api2(`/identity-sources/${form._id}`,{method:"PATCH",body:JSON.stringify(body)});
+        else await api2("/identity-sources",{method:"POST",body:JSON.stringify(body)});
+        loadSources();loadAllRef();
+      }
+      setEditing(null);showMsg("success",isEdit?"Updated":"Created");
+    }catch(e){showMsg("error",e.message)}
+  };
+
+  // ═══════════════════════════════
+  // MODALS (with dropdown selectors)
+  // ═══════════════════════════════
+  const renderModal=()=>{
+    if(!editing)return null;
+    const titles={policy_set:(isEdit?"Edit":"Create")+" Policy Set",auth_policy:(isEdit?"Edit":"Create")+" Authentication Rule",authz_policy:(isEdit?"Edit":"Create")+" Authorization Rule",condition:(isEdit?"Edit":"Create")+" Condition",profile:(isEdit?"Edit":"Create")+" Authorization Profile",source:(isEdit?"Edit":"Create")+" Identity Source"};
+    return<Modal title={titles[editType]||"Create"} onClose={()=>setEditing(null)} wide>
+      {editType==="policy_set"&&<div>
+        <div className="field"><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Wired 802.1X"/></div>
+        <div className="field"><label className="label">Description</label><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+        <div className="field-row">
+          <div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}/></div>
+          <div><label className="label">Default (catch-all)</label><select className="input" value={form.is_default?"true":"false"} onChange={e=>setForm({...form,is_default:e.target.value==="true"})}><option value="false">No</option><option value="true">Yes</option></select></div>
+        </div>
+        <div className="field-row">
+          <IdSelect label="Entry Condition" value={form.condition_id} onChange={v=>setForm({...form,condition_id:v})} items={conditions} placeholder="— No condition (always match) —"/>
+          <IdSelect label="Allowed Protocols" value={form.allowed_protocols_id} onChange={v=>setForm({...form,allowed_protocols_id:v})} items={protocols} placeholder="— Default —"/>
+        </div>
+      </div>}
+
+      {editType==="auth_policy"&&<div>
+        <div className="field"><label className="label">Rule Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. PEAP → Active Directory"/></div>
+        <div className="field-row">
+          <IdSelect label="Condition" value={form.condition_id} onChange={v=>setForm({...form,condition_id:v})} items={conditions} placeholder="— Always match —"/>
+          <IdSelect label="Identity Source" value={form.identity_source_id} onChange={v=>setForm({...form,identity_source_id:v})} items={sources} placeholder="— Select source —"/>
+        </div>
+        <div className="field-row">
+          <div><label className="label">On Failure</label><select className="input" value={form.on_failure} onChange={e=>setForm({...form,on_failure:e.target.value})}><option value="reject">Reject</option><option value="continue">Continue</option><option value="drop">Drop</option></select></div>
+          <div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}/></div>
+        </div>
+      </div>}
+
+      {editType==="authz_policy"&&<div>
+        <div className="field"><label className="label">Rule Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Employees Compliant"/></div>
+        <div className="field-row">
+          <IdSelect label="Condition" value={form.condition_id} onChange={v=>setForm({...form,condition_id:v})} items={conditions} placeholder="— Always match —"/>
+          <IdSelect label="Authorization Profile" value={form.authorization_profile_id} onChange={v=>setForm({...form,authorization_profile_id:v})} items={profiles} placeholder="— Select profile —"/>
+        </div>
+        <div className="field-row">
+          <div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}/></div>
+          <div><label className="label">Default Rule</label><select className="input" value={form.is_default?"true":"false"} onChange={e=>setForm({...form,is_default:e.target.value==="true"})}><option value="false">No</option><option value="true">Yes</option></select></div>
+        </div>
+      </div>}
+
+      {editType==="condition"&&<div>
+        <div className="field"><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+        <div className="field"><label className="label">Description</label><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+        <div className="field-row"><div><label className="label">Type</label><select className="input" value={form.condition_type} onChange={e=>setForm({...form,condition_type:e.target.value})}><option value="simple">Simple</option><option value="compound">Compound</option></select></div><div><label className="label">Category</label><select className="input" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option>Network</option><option>Device</option><option>User</option><option>Posture</option><option>General</option></select></div></div>
+        {form.condition_type==="simple"&&<div><div className="field"><label className="label">Attribute</label><input className="input mono" value={form.attribute} onChange={e=>setForm({...form,attribute:e.target.value})} placeholder="e.g. RADIUS:NAS-Port-Type"/></div><div className="field-row"><div><label className="label">Operator</label><select className="input" value={form.operator} onChange={e=>setForm({...form,operator:e.target.value})}>{["equals","not_equals","contains","not_contains","starts_with","ends_with","matches_regex","in","not_in"].map(o=><option key={o}>{o}</option>)}</select></div><div><label className="label">Value</label><input className="input mono" value={form.value} onChange={e=>setForm({...form,value:e.target.value})} placeholder="e.g. Ethernet"/></div></div></div>}
+        {form.condition_type==="compound"&&<div className="field"><label className="label">Compound — select children conditions</label><textarea className="input mono" value={form.compound_json} onChange={e=>setForm({...form,compound_json:e.target.value})} rows={3} placeholder='{"operator":"AND","children":[1,2]}'/><div style={{marginTop:6,fontSize:11,color:"#6b7280"}}>Available conditions: {conditions.filter(c=>c.condition_type==="simple").map(c=><span key={c.id} className="badge badge-gray" style={{cursor:"pointer",marginRight:4}} onClick={()=>{let cur;try{cur=JSON.parse(form.compound_json)}catch(e){cur={operator:"AND",children:[]}};if(!cur.children)cur.children=[];if(!cur.children.includes(c.id)){cur.children.push(c.id);setForm({...form,compound_json:JSON.stringify(cur,null,2)})}}}>{c.id}: {c.name}</span>)}</div></div>}
+      </div>}
+
+      {editType==="profile"&&<div>
+        <div className="field"><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. VLAN100_Employee"/></div>
+        <div className="field"><label className="label">Description</label><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+        <div className="field"><label className="label">Access Type</label><select className="input" value={form.access_type} onChange={e=>setForm({...form,access_type:e.target.value})}><option value="access_accept">Accept</option><option value="access_reject">Reject</option></select></div>
+        <div className="field-row"><div><label className="label">VLAN ID</label><input className="input" type="number" value={form.vlan_id} onChange={e=>setForm({...form,vlan_id:e.target.value})}/></div><div><label className="label">VLAN Name</label><input className="input" value={form.vlan_name} onChange={e=>setForm({...form,vlan_name:e.target.value})}/></div></div>
+        <div className="field-row"><div><label className="label">ACL Name</label><input className="input" value={form.acl_name} onChange={e=>setForm({...form,acl_name:e.target.value})}/></div><div><label className="label">Session Timeout (s)</label><input className="input" type="number" value={form.session_timeout} onChange={e=>setForm({...form,session_timeout:e.target.value})}/></div></div>
+        <div className="field"><label className="label">URL Redirect</label><input className="input" value={form.url_redirect} onChange={e=>setForm({...form,url_redirect:e.target.value})} placeholder="https://..."/></div>
+      </div>}
+
+      {editType==="source"&&<div>
+        <div className="field"><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+        <div className="field"><label className="label">Description</label><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+        <div className="field-row"><div><label className="label">Type</label><select className="input" value={form.source_type} onChange={e=>setForm({...form,source_type:e.target.value})}><option value="internal">Internal Users</option><option value="active_directory">Active Directory</option><option value="ldap">LDAP</option><option value="certificate">Certificate</option><option value="mab">MAB</option></select></div><div><label className="label">Priority</label><input className="input" type="number" value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}/></div></div>
+        <div className="field"><label className="label">Config (JSON)</label><textarea className="input mono" value={form.config_json} onChange={e=>setForm({...form,config_json:e.target.value})} rows={3} placeholder='{"host":"10.10.10.50","port":389}'/></div>
+      </div>}
+
+      <div style={{display:"flex",gap:8,marginTop:16,paddingTop:16,borderTop:"1px solid #e5e7eb"}}><button className="btn btn-primary" onClick={save}>{isEdit?"Save":"Create"}</button><button className="btn btn-default" onClick={()=>setEditing(null)}>Cancel</button></div>
+    </Modal>;
+  };
+
+  // ═══════════════════════════════
+  // MAIN RENDER
+  // ═══════════════════════════════
+  return<div>
+    <Alert type={msg?.type} text={msg?.text} onDismiss={()=>setMsg(null)}/>
+    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e5e7eb",marginBottom:20}}>
+      {tabs.map(t=><div key={t.id} onClick={()=>switchTab(t.id)} style={{padding:"10px 20px",fontSize:13,fontWeight:view===t.id||(view==="detail"&&t.id==="sets")?600:400,cursor:"pointer",color:view===t.id||(view==="detail"&&t.id==="sets")?"#f48120":"#6b7280",borderBottom:view===t.id||(view==="detail"&&t.id==="sets")?"2px solid #f48120":"2px solid transparent",marginBottom:-2}}>{t.icon} {t.label}</div>)}
+    </div>
+    {view==="sets"&&renderSets()}
+    {view==="detail"&&renderDetail()}
+    {view==="conditions"&&renderConditions()}
+    {view==="profiles"&&renderProfiles()}
+    {view==="protocols"&&renderProtocols()}
+    {view==="sources"&&renderSources()}
+    {view==="evaluate"&&renderEval()}
+    {renderModal()}
+  </div>;
+}
+
+
 function SettingsPage(){return<div className="card" style={{padding:20}}><div style={{fontWeight:600,marginBottom:16}}>System</div>{[["Version","0.1.0"],["MariaDB","Galera 3/3"],["Redis","Sentinel HA"],["Kafka","KRaft"],["FreeRADIUS","3.2.6 ×2"],["EAP-TLS","Enabled"],["PKI","Internal CA"]].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f3f4f6",fontSize:13}}><span style={{color:"#6b7280"}}>{k}</span><span className="mono">{v}</span></div>)}</div>}
 
 // ─── Navigation ───
-const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"policies",name:"Policies",icon:"⚙"},{id:"certificates",name:"Certificates",icon:"🔐"},{id:"posture",name:"Posture",icon:"🛡"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"livelog",name:"Live Policy Log",icon:"📡"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
-const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},posture:{t:"Posture Assessment",s:"ISE-style endpoint compliance — Conditions, Requirements, Policies",C:PosturePage},certificates:{t:"Certificate Management",s:"PKI — issue, revoke, and manage EAP-TLS certificates",C:CertificatesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},livelog:{t:"Live Policy Log",s:"Real-time policy decisions with SSE streaming",C:LiveLogPage},nas:{t:"Network Devices",s:"Switches & WLCs",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
+const NAV=[{id:"dashboard",name:"Overview",icon:"◎"},{section:"Access Control"},{id:"endpoints",name:"Endpoints",icon:"◉"},{id:"isepolicy",name:"Policy Sets (ISE)",icon:"◆"},{id:"certificates",name:"Certificates",icon:"🔐"},{id:"posture",name:"Posture",icon:"🛡"},{id:"authlog",name:"Auth Log",icon:"▤"},{id:"livelog",name:"Live Policy Log",icon:"📡"},{id:"guests",name:"Guest Portal",icon:"⊕"},{section:"Infrastructure"},{id:"nas",name:"Network Devices",icon:"⬡"},{id:"ldap",name:"LDAP / AD",icon:"⊞"},{section:"System"},{id:"settings",name:"Settings",icon:"◇"}];
+const PG={dashboard:{t:"Overview",s:"NAC Dashboard",C:DashboardPage},endpoints:{t:"Endpoints",s:"Authenticated devices",C:EndpointsPage},policies:{t:"Authorization Policies",s:"Rules determining access levels",C:PoliciesPage},posture:{t:"Posture Assessment",s:"ISE-style endpoint compliance — Conditions, Requirements, Policies",C:PosturePage},certificates:{t:"Certificate Management",s:"PKI — issue, revoke, and manage EAP-TLS certificates",C:CertificatesPage},authlog:{t:"Authentication Log",s:"RADIUS events",C:AuthLogPage},livelog:{t:"Live Policy Log",s:"Real-time policy decisions with SSE streaming",C:LiveLogPage},nas:{t:"Network Devices",s:"Switches & WLCs",C:NASPage},guests:{t:"Guest Accounts",s:"Temporary access",C:GuestPage},ldap:{t:"LDAP / Active Directory",s:"Identity source and group mapping",C:LDAPPage},isepolicy:{t:"ISE Policy Sets",s:"3-level policy hierarchy — Policy Sets, Authentication, Authorization",C:ISEPolicyPage},settings:{t:"Settings",s:"System configuration",C:SettingsPage}};
 
 function App(){const[page,setPage]=useState("dashboard");React.useEffect(()=>{window.__setPage=setPage;return()=>{delete window.__setPage}},[setPage]);const[health,setHealth]=useState(null);useEffect(()=>{const f=()=>fetch("/health").then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}));f();const t=setInterval(f,30000);return()=>clearInterval(t)},[]);const pg=PG[page]||PG.dashboard;const C=pg.C;return<div style={{display:"flex",height:"100vh"}}><nav style={{width:230,background:"#1a1a2e",display:"flex",flexDirection:"column",flexShrink:0}}><div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#f48120,#e85d04)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16,color:"#fff"}}>N</div><div><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>Open NAC</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>Network Access Control</div></div></div></div><div style={{padding:"12px 8px",flex:1,overflowY:"auto"}}>{NAV.map((item,i)=>item.section?<div key={i} style={{padding:"14px 12px 6px",fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.25)",textTransform:"uppercase",letterSpacing:1.2}}>{item.section}</div>:<div key={item.id} onClick={()=>setPage(item.id)} style={{padding:"8px 12px",borderRadius:6,cursor:"pointer",fontSize:13,marginBottom:1,color:page===item.id?"#fff":"rgba(255,255,255,0.45)",fontWeight:page===item.id?600:400,background:page===item.id?"#2d2d55":"transparent",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{item.icon}</span><span>{item.name}</span></div>)}</div><div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.08)",fontSize:12}}><div style={{display:"flex",alignItems:"center",gap:6,color:health?.status==="ok"?"#4ade80":"#f87171"}}><span style={{width:6,height:6,borderRadius:"50%",background:"currentColor"}}/>{health?.status==="ok"?"Systems operational":"Connecting..."}</div></div></nav><main style={{flex:1,overflow:"auto"}}><div style={{borderBottom:"1px solid #e5e7eb",background:"#fff",padding:"16px 28px"}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{pg.t}</h1><p style={{fontSize:12,color:"#6b7280",margin:"2px 0 0"}}>{pg.s}</p></div><div style={{padding:"20px 28px"}}><C/></div></main></div>}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
